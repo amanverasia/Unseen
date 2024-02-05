@@ -1,4 +1,7 @@
 import instaloader
+import networkx as nx
+import matplotlib.pyplot as plt
+
 L = instaloader.Instaloader()
 USER = input('What is your username?\n')
 
@@ -59,3 +62,19 @@ for i in common:
 	f.write(str(i))
 	f.write(' \n')
 f.close
+
+G = nx.Graph()
+
+edges = [ ]
+for words in common:
+  edges.append((target1, words))
+G.add_edges_from(edges)
+
+for words in common:
+  edges.append((target2, words))
+G.add_edges_from(edges)
+
+plt.figure(1,figsize=(10,10))
+nx.draw_spring(G,node_color='cyan', node_size=600,font_size=8, with_labels=True)
+plt.savefig("common_followers.png") # save as png
+plt.show() # display
