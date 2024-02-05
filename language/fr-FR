@@ -40,13 +40,13 @@ common = list(set(target1_following) & set(target2_following))
 
 #writing it into file
 f = open(f"{target1}'s following.txt", "a")
-for i in target1_friends:
+for i in target1_following:
 	f.write(str(i))
 	f.write(' \n')
 f.close
 
 f = open(f"{target2}'s following.txt", "a")
-for i in target2_friends:
+for i in target2_following:
 	f.write(str(i))
 	f.write(' \n')
 f.close
@@ -56,3 +56,19 @@ for i in common:
 	f.write(str(i))
 	f.write(' \n')
 f.close
+
+G = nx.Graph()
+
+edges = [ ]
+for words in common:
+  edges.append((target1, words))
+G.add_edges_from(edges)
+
+for words in common:
+  edges.append((target2, words))
+G.add_edges_from(edges)
+
+plt.figure(1,figsize=(10,10))
+nx.draw_spring(G,node_color='cyan', node_size=600,font_size=8, with_labels=True)
+plt.savefig("common_following.png") # save as png
+plt.show() # display
