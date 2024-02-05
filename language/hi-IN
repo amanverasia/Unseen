@@ -31,11 +31,11 @@ def find_friends(target):
 	return friends
 
 target = input('Enter the username of your target: ')
-target_followers = find_followers(target)
+target_following = find_following(target)
 
 #writing it into file
-f = open(f"{target}'s followers.txt", "a")
-for i in target_followers:
+f = open(f"{target}'s following.txt", "a")
+for i in target_following:
 	f.write(str(i))
 	f.write(' \n')
 f.close
