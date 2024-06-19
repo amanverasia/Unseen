@@ -4,18 +4,6 @@ from utils import user_summary
 from instagrapi import Client
 import os
 
-if "session.json" not in os.listdir():
-    generate_session()
-else:
-    print("Session File Found, you can continue")
-
-cl = Client()
-cl.delay_range = [1, 10]
-cl.load_settings("session.json")
-
-target = input("Enter your target username: ")
-user_id = cl.user_id_from_username(target)
-
 def user_followers(user_id):
     followers_data = cl.user_followers(user_id)
     file_path = os.path.join(target, 'followers.txt')
@@ -34,22 +22,87 @@ def user_following(user_id):
             fh.write(f'''Username: "{following_data[i].username}" Full Name: "{following_data[i].full_name}" Profile Picture: "{following_data[i].profile_pic_url}"''')
             fh.write('\n')
 
-#making the folder for target
-if target not in os.listdir():
-    os.mkdir(f"./{target}")
+def clear_screen():
+    if os.name == "nt":
+        os.system("cls")
+    else:
+        os.system("clear")
 
-#fetching target info
-user_info = cl.user_info(user_id)
+session_file_exists = False
+user_id = False
 
-#creating user_info.json file
-generate_user_info_file(target, user_info)
+target = input('Please enter your target: ')
+clear_screen()
+while(True):
+    clear_screen()
+    print(f'Current Target is "{target}"\n\n')
+    print('Choose one of the following options...')
+    print('1. Generate Session File')
+    print('2. Summary of target')
+    print('3. Find Followers')
+    print('4. Find Following')
+    print('5. Exit')
+    choice = input('Enter Choice: ')
+    clear_screen()
+    if target not in os.listdir():
+        os.mkdir(f"./{target}")
+    if not choice.isnumeric():
+        print('Invalid choice')
+        input('Press Enter to continue...')
+        continue
 
-#user info basic idea
-user_summary(user_info)
+    if not (1<=int(choice)<=5 ):
+        print('Invalid choice')
+        input('Press Enter to continue...')
+        continue
 
-#user followers
-user_followers(user_id)
+    if(choice == '5'):
+        break
+    if(session_file_exists and not (user_id)):
+        print('Generating user id... Might take a few seconds. Try your command again.')
+        user_id = cl.user_id_from_username(target)
+        print('User ID Generated')
+        input('Press Enter to continue...')
+        continue
 
-#user following
-user_following(user_id)
+
+    if(choice == '1'):
+        if "session.json" not in os.listdir():
+            if(generate_session()):
+                print('Session file successfully generated')
+                session_file_exists = True
+                cl = Client()
+                cl.delay_range = [1, 10]
+                cl.load_settings("session.json")
+                input('Press Enter to continue...')
+                continue
+            else:
+                print('Something went wrong, restart the script')
+                break
+        else:
+            print("Session File Already Found, you can continue. If you do not want to use it, please delete the session.json file. And try again.")
+            session_file_exists = True
+            cl = Client()
+            cl.delay_range = [1, 10]
+            cl.load_settings("session.json")
+            input('Press Enter to continue...')
+            continue
+    if(choice == '2' and session_file_exists):
+        user_info = cl.user_info(user_id)
+        generate_user_info_file(target, user_info)
+        user_summary(user_info)
+        input('Press Enter to continue...')
+        continue
+    elif(choice == '3' and session_file_exists):
+        print('Might take a few minutes depending upon the target, please be patient.')
+        user_followers(user_id)
+        print('Done!')
+        input('Press Enter to continue...')
+        continue
+    elif(choice == '4' and session_file_exists):
+        print('Might take a few minutes depending upon the target, please be patient.')
+        user_following(user_id)
+        print('Done!')
+        input('Press Enter to continue...')
+        continue
 

@@ -8,9 +8,14 @@ def generate_session():
     otp_from_totp = input("Enter your OTP: ")
     cl = Client()
     cl.delay_range = [1, 10]
-    cl.login(username, password, False, otp_from_totp)
-    cl.dump_settings("session.json")
-    return "Success"
+    try:
+        cl.login(username, password, False, otp_from_totp)
+        cl.dump_settings("session.json")
+        return True
+    except Exception as e:
+        print(e)
+        return False
+
 
 def generate_user_info_file(target, user_info):
     file_path = os.path.join(target, 'user_info.json')
@@ -24,7 +29,7 @@ def generate_user_info_file(target, user_info):
             if index < len(list(user_info))-1:
                 fh.write(',\n')
         fh.write("}")
-    file_path = os.path.join(target, f'{target}')
+    file_path = os.path.join(target, f'{target}.jpg')
     url = user_info.profile_pic_url_hd
     data = requests.get(url).content 
     f = open(file_path,'wb') 
