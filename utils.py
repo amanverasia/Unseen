@@ -1,4 +1,5 @@
 from instagrapi import Client
+import requests
 import os
 
 def generate_session():
@@ -15,7 +16,6 @@ def generate_user_info_file(target, user_info):
     file_path = os.path.join(target, 'user_info.json')
     with open(file_path, "w") as fh:
         fh.write("{")
-
         for index, i in enumerate(list(user_info)):
             fh.write(f'''"{i[0]}": ''')
             fh.write('"')
@@ -24,6 +24,12 @@ def generate_user_info_file(target, user_info):
             if index < len(list(user_info))-1:
                 fh.write(',\n')
         fh.write("}")
+    file_path = os.path.join(target, f'{target}')
+    url = user_info.profile_pic_url_hd
+    data = requests.get(url).content 
+    f = open(file_path,'wb') 
+    f.write(data) 
+    f.close() 
 
 def user_summary(user_info):
     print(f"Summary for '{user_info.username}'")
@@ -36,3 +42,4 @@ def user_summary(user_info):
     print("--------------------------------")
     print()
     print(f"More information can be found inside the {user_info.username}/user_info.json file.")
+
