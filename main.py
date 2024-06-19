@@ -28,7 +28,10 @@ def clear_screen():
     else:
         os.system("clear")
 
-session_file_exists = False
+if "session.json" in os.listdir():
+    session_file_exists = True
+else:
+    session_file_exists = False
 user_id = False
 
 target = input('Please enter your target: ')
@@ -58,13 +61,6 @@ while(True):
 
     if(choice == '5'):
         break
-    if(session_file_exists and not (user_id)):
-        print('Generating user id... Might take a few seconds. Try your command again.')
-        user_id = cl.user_id_from_username(target)
-        print('User ID Generated')
-        input('Press Enter to continue...')
-        continue
-
 
     if(choice == '1'):
         if "session.json" not in os.listdir():
@@ -74,6 +70,10 @@ while(True):
                 cl = Client()
                 cl.delay_range = [1, 10]
                 cl.load_settings("session.json")
+                input('Press Enter to continue...')
+                print('Generating user id... Might take a few seconds. Try your command again.')
+                user_id = cl.user_id_from_username(target)
+                print('User ID Generated')
                 input('Press Enter to continue...')
                 continue
             else:
@@ -86,8 +86,12 @@ while(True):
             cl.delay_range = [1, 10]
             cl.load_settings("session.json")
             input('Press Enter to continue...')
+            print('Generating user id... Might take a few seconds. Try your command again.')
+            user_id = cl.user_id_from_username(target)
+            print('User ID Generated')
+            input('Press Enter to continue...')
             continue
-    if(choice == '2' and session_file_exists):
+    elif(choice == '2' and session_file_exists):
         user_info = cl.user_info(user_id)
         generate_user_info_file(target, user_info)
         user_summary(user_info)
@@ -105,4 +109,6 @@ while(True):
         print('Done!')
         input('Press Enter to continue...')
         continue
+    else:
+        print('Congratulations, you broke the script somehow, contact the main author with screenshots and explanation as to what you did.')
 

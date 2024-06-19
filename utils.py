@@ -19,7 +19,7 @@ def generate_session():
 
 def generate_user_info_file(target, user_info):
     file_path = os.path.join(target, 'user_info.json')
-    with open(file_path, "w") as fh:
+    with open(file_path, "w",encoding="utf-8") as fh:
         fh.write("{")
         for index, i in enumerate(list(user_info)):
             fh.write(f'''"{i[0]}": ''')
@@ -32,7 +32,7 @@ def generate_user_info_file(target, user_info):
     file_path = os.path.join(target, f'{target}.jpg')
     url = user_info.profile_pic_url_hd
     data = requests.get(url).content 
-    f = open(file_path,'wb') 
+    f = open(file_path,'wb',) 
     f.write(data) 
     f.close() 
 
