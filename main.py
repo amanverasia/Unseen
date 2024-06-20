@@ -69,6 +69,7 @@ while(True):
     print('2. Summary of target')
     print('3. Find Followers')
     print('4. Find Following')
+    print('5. Download All Media')
     print('5. Exit')
     choice = input('Enter Choice: ')
     clear_screen()
