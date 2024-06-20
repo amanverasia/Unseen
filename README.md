@@ -44,3 +44,4 @@ You will need to enable 2FA in your Instagram account using TOTP and not SMS. It
 - [ ] Highlights Download
 - [ ] Story Download
 - [ ] Profile Picture Download
+- [ ] Hashtag analysis stuff
