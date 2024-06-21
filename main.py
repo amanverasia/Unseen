@@ -1,4 +1,4 @@
-from utils import generate_session, media_sorter, generate_user_info_file, user_summary, media_downloader
+from utils import generate_session, media_sorter, generate_user_info_file, user_summary, media_downloader, media_downloader_tagged
 from instagrapi import Client
 import os
 import pickle
@@ -98,7 +98,8 @@ while(True):
     print('3. Find Followers')
     print('4. Find Following')
     print('5. Download All Media')
-    print('6. Exit')
+    print('6. Download All Tagged Media')
+    print('7. Exit')
     choice = input('Enter Choice: ')
     clear_screen()
 
@@ -107,23 +108,30 @@ while(True):
 
     if "posts" not in os.listdir(target):
         os.mkdir(f"{target}/posts")
+
+    if "tagged_posts" not in os.listdir(target):
+        os.mkdir(f"{target}/tagged_posts")
     
     media_list = ["images","videos","igtv","reels","albums"]
     for key in media_list:
         if key not in os.listdir(f"{target}/posts"):
             os.mkdir(f"{target}/posts/{key}")
 
+    for key in media_list:
+        if key not in os.listdir(f"{target}/tagged_posts"):
+            os.mkdir(f"{target}/tagged_posts/{key}")
+
     if not choice.isnumeric():
         print('Invalid choice')
         input('Press Enter to continue...')
         continue
 
-    if not (1<=int(choice)<=6 ):
+    if not (1<=int(choice)<=7 ):
         print('Invalid choice')
         input('Press Enter to continue...')
         continue
 
-    if(choice == '6'):
+    if(choice == '7'):
         break
 
     if(choice == '1'):
@@ -176,7 +184,6 @@ while(True):
     elif(choice == '5' and session_file_exists and user_id):
         print("Fetching all the media, might take a while.")
         final_sort = combine_media(fetch_images_albums(user_id), fetch_videos(user_id))
-
         with open(f"{target}/posts/media.pickle", "ab") as fh:
             pickle.dump(final_sort, fh)
         with open(f"{target}/posts/media.txt", "w", encoding="utf-8") as outfile: 
@@ -185,6 +192,18 @@ while(True):
         print('Done!')
         input('Press Enter to continue...')
         continue
+    elif(choice == '6' and session_file_exists and user_id):
+            print("Fetching all the tagged media, might take a while.")
+            final_sort = fetch_tagged(user_id)
+            with open(f"{target}/tagged_posts/media.pickle", "ab") as fh:
+                pickle.dump(final_sort, fh)
+            with open(f"{target}/tagged_posts/media.txt", "w", encoding="utf-8") as outfile: 
+                outfile.write(str(final_sort))
+            media_downloader_tagged(final_sort, target)
+            print('Done!')
+            input('Press Enter to continue...')
+            continue
+
     else:
 
         print('Congratulations, you broke the script somehow, contact the main author with screenshots and explanation as to what you did.')

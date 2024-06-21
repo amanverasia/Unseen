@@ -188,3 +188,67 @@ def media_downloader(final_sort, target):
                         f = open(file_path,'wb',) 
                         f.write(data) 
                         f.close()
+
+
+def media_downloader_tagged(final_sort, target):
+    for key in final_sort:
+        print(f"Working for {key}")
+        count = 0
+        for i in final_sort[key]:
+            print(i)
+            if(key == "images"):
+                file_path = os.path.join(f'{target}/tagged_posts/{key}', f'{i["taken_time"]} - {i["id"]}.jpg')
+                if not os.path.isfile(file_path):
+                    file_path_for_file = os.path.join(f'{target}/tagged_posts/{key}', f'{i["taken_time"]} - {i["id"]}.txt')
+                    with open(file_path_for_file, "w", encoding="utf-8") as fh:
+                        fh.write(f'''"id" : {i["id"]}\n''')
+                        fh.write(f'''"code" : {i["code"]}\n''')
+                        fh.write(f'''"taken_time" : {i["taken_time"]}\n''')
+                        fh.write(f'''"likes" : {i["likes"]}\n''')
+                        fh.write(f'''"comment_count" : {i["comment_count"]}\n''')
+                        fh.write(f'''"caption" : {i["caption"]}''')
+                    url = i['url']
+                    data = requests.get(url).content 
+                    f = open(file_path,'wb',) 
+                    f.write(data) 
+                    f.close()        
+            if (key == "igtv" or key == "videos" or key == "reels"):
+                file_path = os.path.join(f'{target}/tagged_posts/{key}', f'{i["taken_time"]} - {i["id"]}.mp4')
+                if not os.path.isfile(file_path):
+                    file_path_for_file = os.path.join(f'{target}/tagged_posts/{key}', f'{i["taken_time"]} - {i["id"]}.txt')
+                    with open(file_path_for_file, "w", encoding="utf-8") as fh:
+                        fh.write(f'''"id" : {i["id"]}\n''')
+                        fh.write(f'''"code" : {i["code"]}\n''')
+                        fh.write(f'''"taken_time" : {i["taken_time"]}\n''')
+                        fh.write(f'''"likes" : {i["likes"]}\n''')
+                        fh.write(f'''"comment_count" : {i["comment_count"]}\n''')
+                        fh.write(f'''"caption" : {i["caption"]}\n''')
+                        fh.write(f'''"view_count" : {i["view_count"]}''')
+                    url = i['url']
+                    data = requests.get(url).content 
+                    f = open(file_path,'wb',) 
+                    f.write(data) 
+                    f.close()
+            if(key == "albums"):
+                temp = f'{i["taken_time"]} - {i["id"]}'
+                print(temp)
+                if temp not in os.listdir(f"{target}/tagged_posts/albums"):
+                    print(f'Created new folder for {i["taken_time"]} - {i["id"]}')
+                    os.mkdir(f'{target}/tagged_posts/albums/{i["taken_time"]} - {i["id"]}')
+
+                file_path_for_file = os.path.join(f'{target}/tagged_posts/albums/{i["taken_time"]} - {i["id"]}', f'{i["taken_time"]} - {i["id"]}.txt')
+                with open(file_path_for_file, "w", encoding="utf-8") as fh:
+                    fh.write(f'''"id" : {i["id"]}\n''')
+                    fh.write(f'''"code" : {i["code"]}\n''')
+                    fh.write(f'''"taken_time" : {i["taken_time"]}\n''')
+                    fh.write(f'''"likes" : {i["likes"]}\n''')
+                    fh.write(f'''"comment_count" : {i["comment_count"]}\n''')
+                    fh.write(f'''"caption" : {i["caption"]}\n''')
+                for url in i["urls"]:
+                    count += 1
+                    file_path = os.path.join(f'{target}/tagged_posts/albums/{i["taken_time"]} - {i["id"]}', f'{count}.jpg')
+                    if not os.path.isfile(file_path):
+                        data = requests.get(url).content 
+                        f = open(file_path,'wb',) 
+                        f.write(data) 
+                        f.close()
