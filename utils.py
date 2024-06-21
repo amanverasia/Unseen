@@ -61,7 +61,7 @@ def media_sorter(media):
         if (i.media_type == 1):
             images.append({"id":i.id, 
                         "code":i.code, 
-                        "taken_time":i.taken_at.strftime("%d-%m-%Y %H:%M:%S %Z"), 
+                        "taken_time":i.taken_at.strftime("%d-%m-%Y %H %M %S %Z"), 
                         "url": i.thumbnail_url, 
                         "likes":i.like_count, 
                         "comment_count":i.comment_count, 
@@ -71,7 +71,7 @@ def media_sorter(media):
         if(i.media_type == 2 and i.product_type == "feed"):
             videos.append({"id":i.id, 
                         "code":i.code, 
-                        "taken_time":i.taken_at.strftime("%d-%m-%Y %H:%M:%S %Z"),
+                        "taken_time":i.taken_at.strftime("%d-%m-%Y %H %M %S %Z"),
                         "url":i.video_url,
                         "likes":i.like_count, 
                         "comment_count":i.comment_count, 
@@ -82,7 +82,7 @@ def media_sorter(media):
         if(i.media_type == 2 and i.product_type == "igtv"):
             igtv.append({"id":i.id, 
                         "code":i.code, 
-                        "taken_time":i.taken_at.strftime("%d-%m-%Y %H:%M:%S %Z"),
+                        "taken_time":i.taken_at.strftime("%d-%m-%Y %H %M %S %Z"),
                         "url":i.video_url,
                         "likes":i.like_count, 
                         "comment_count":i.comment_count, 
@@ -93,7 +93,7 @@ def media_sorter(media):
         if(i.media_type == 2 and i.product_type == "clips"):
             reels.append({"id":i.id, 
                         "code":i.code, 
-                        "taken_time":i.taken_at.strftime("%d-%m-%Y %H:%M:%S %Z"),
+                        "taken_time":i.taken_at.strftime("%d-%m-%Y %H %M %S %Z"),
                         "url":i.video_url,
                         "thumbnail_url": i.thumbnail_url,
                         "likes":i.like_count, 
@@ -111,7 +111,7 @@ def media_sorter(media):
                     album_resource_urls.append(j.video_url)
             albums.append({"id":i.id, 
                         "code":i.code, 
-                        "taken_time":i.taken_at.strftime("%d-%m-%Y %H:%M:%S %Z"),
+                        "taken_time":i.taken_at.strftime("%d-%m-%Y %H %M %S %Z"),
                         "urls": album_resource_urls,
                         "likes":i.like_count, 
                         "comment_count":i.comment_count, 
@@ -132,25 +132,54 @@ def media_downloader(final_sort, target):
         for i in final_sort[key]:
             print(i)
             if(key == "images"):
-                file_path = os.path.join(f'{target}/posts/{key}', f'{i["id"]}.jpg')
+                file_path = os.path.join(f'{target}/posts/{key}', f'{i["taken_time"]} - {i["id"]}.jpg')
+                file_path_for_file = os.path.join(f'{target}/posts/{key}', f'{i["taken_time"]} - {i["id"]}.txt')
+                with open(file_path_for_file, "w", encoding="utf-8") as fh:
+                    fh.write(f'''"id" : {i["id"]}\n''')
+                    fh.write(f'''"code" : {i["code"]}\n''')
+                    fh.write(f'''"taken_time" : {i["taken_time"]}\n''')
+                    fh.write(f'''"likes" : {i["likes"]}\n''')
+                    fh.write(f'''"comment_count" : {i["comment_count"]}\n''')
+                    fh.write(f'''"caption" : {i["caption"]}''')
                 url = i['url']
                 data = requests.get(url).content 
                 f = open(file_path,'wb',) 
                 f.write(data) 
                 f.close()        
             if (key == "igtv" or key == "videos" or key == "reels"):
-                file_path = os.path.join(f'{target}/posts/{key}', f'{i["id"]}.mp4')
+                file_path = os.path.join(f'{target}/posts/{key}', f'{i["taken_time"]} - {i["id"]}.mp4')
+                file_path_for_file = os.path.join(f'{target}/posts/{key}', f'{i["taken_time"]} - {i["id"]}.txt')
+                with open(file_path_for_file, "w", encoding="utf-8") as fh:
+                    fh.write(f'''"id" : {i["id"]}\n''')
+                    fh.write(f'''"code" : {i["code"]}\n''')
+                    fh.write(f'''"taken_time" : {i["taken_time"]}\n''')
+                    fh.write(f'''"likes" : {i["likes"]}\n''')
+                    fh.write(f'''"comment_count" : {i["comment_count"]}\n''')
+                    fh.write(f'''"caption" : {i["caption"]}\n''')
+                    fh.write(f'''"view_count" : {i["view_count"]}''')
                 url = i['url']
                 data = requests.get(url).content 
                 f = open(file_path,'wb',) 
                 f.write(data) 
                 f.close()
             if(key == "albums"):
-                if i["id"] not in os.listdir("{target}/posts/albums"):
-                    os.mkdir(f"{target}/posts/albums/{i['id']}")
+                temp = f'{i["taken_time"]} - {i["id"]}'
+                print(temp)
+                if temp not in os.listdir(f"{target}/posts/albums"):
+                    print(f'Created new folder for {i["taken_time"]} - {i["id"]}')
+                    os.mkdir(f'{target}/posts/albums/{i["taken_time"]} - {i["id"]}')
+
+                file_path_for_file = os.path.join(f'{target}/posts/albums/{i["taken_time"]} - {i["id"]}', f'{i["taken_time"]} - {i["id"]}.txt')
+                with open(file_path_for_file, "w", encoding="utf-8") as fh:
+                    fh.write(f'''"id" : {i["id"]}\n''')
+                    fh.write(f'''"code" : {i["code"]}\n''')
+                    fh.write(f'''"taken_time" : {i["taken_time"]}\n''')
+                    fh.write(f'''"likes" : {i["likes"]}\n''')
+                    fh.write(f'''"comment_count" : {i["comment_count"]}\n''')
+                    fh.write(f'''"caption" : {i["caption"]}\n''')
                 for url in i["urls"]:
                     count += 1
-                    file_path = os.path.join(f'{target}/posts/albums/{i["id"]}', f'{count} {i["id"]}.jpg')
+                    file_path = os.path.join(f'{target}/posts/albums/{i["taken_time"]} - {i["id"]}', f'{count}.jpg')
                     data = requests.get(url).content 
                     f = open(file_path,'wb',) 
                     f.write(data) 

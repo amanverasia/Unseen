@@ -135,7 +135,7 @@ while(True):
                 cl.delay_range = [3, 10]
                 cl.load_settings("session.json")
                 input('Press Enter to continue...')
-                print('Generating user id... Might take a few seconds. Try your command again.')
+                print('Generating user id... Might take a few seconds. Try your command again after this process is complete')
                 user_id = cl.user_id_from_username(target)
                 print('User ID Generated')
                 input('Press Enter to continue...')
@@ -179,11 +179,8 @@ while(True):
 
         with open(f"{target}/posts/media.pickle", "ab") as fh:
             pickle.dump(final_sort, fh)
-        with open(f"{target}/posts/media.json", "w", encoding="utf-8") as outfile: 
+        with open(f"{target}/posts/media.txt", "w", encoding="utf-8") as outfile: 
             outfile.write(str(final_sort))
-
-        
-
         media_downloader(final_sort, target)
         print('Done!')
         input('Press Enter to continue...')
