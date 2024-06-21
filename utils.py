@@ -125,3 +125,33 @@ def media_sorter(media):
         "albums": albums
     }
 
+def media_downloader(final_sort, target):
+    for key in final_sort:
+        print(f"Working for {key}")
+        count = 0
+        for i in final_sort[key]:
+            print(i)
+            if(key == "images"):
+                file_path = os.path.join(f'{target}/posts/{key}', f'{i["id"]}.jpg')
+                url = i['url']
+                data = requests.get(url).content 
+                f = open(file_path,'wb',) 
+                f.write(data) 
+                f.close()        
+            if (key == "igtv" or key == "videos" or key == "reels"):
+                file_path = os.path.join(f'{target}/posts/{key}', f'{i["id"]}.mp4')
+                url = i['url']
+                data = requests.get(url).content 
+                f = open(file_path,'wb',) 
+                f.write(data) 
+                f.close()
+            if(key == "albums"):
+                if i["id"] not in os.listdir("{target}/posts/albums"):
+                    os.mkdir(f"{target}/posts/albums/{i['id']}")
+                for url in i["urls"]:
+                    count += 1
+                    file_path = os.path.join(f'{target}/posts/albums/{i["id"]}', f'{count} {i["id"]}.jpg')
+                    data = requests.get(url).content 
+                    f = open(file_path,'wb',) 
+                    f.write(data) 
+                    f.close()
