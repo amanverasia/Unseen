@@ -40,8 +40,9 @@ python main.py
 You will need to enable 2FA in your Instagram account using TOTP and not SMS. It is were you use an app like Authy or Google Authenticator to generate 2FA codes on the fly. You will also have to approve the Instagram login one time from your app to generate the session.json file.
 
 ## Pending Tasks
-- [ ] Media Download
+- [x] Media Download
+- [x] Tagged Media Download
 - [ ] Highlights Download
 - [ ] Story Download
-- [ ] Profile Picture Download
+- [x] Profile Picture Download
 - [ ] Hashtag analysis stuff
