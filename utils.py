@@ -1,6 +1,7 @@
 from instagrapi import Client
 import requests
 import os
+import os.path
 
 def generate_session():
     username = input("Enter your username: ")
@@ -133,35 +134,37 @@ def media_downloader(final_sort, target):
             print(i)
             if(key == "images"):
                 file_path = os.path.join(f'{target}/posts/{key}', f'{i["taken_time"]} - {i["id"]}.jpg')
-                file_path_for_file = os.path.join(f'{target}/posts/{key}', f'{i["taken_time"]} - {i["id"]}.txt')
-                with open(file_path_for_file, "w", encoding="utf-8") as fh:
-                    fh.write(f'''"id" : {i["id"]}\n''')
-                    fh.write(f'''"code" : {i["code"]}\n''')
-                    fh.write(f'''"taken_time" : {i["taken_time"]}\n''')
-                    fh.write(f'''"likes" : {i["likes"]}\n''')
-                    fh.write(f'''"comment_count" : {i["comment_count"]}\n''')
-                    fh.write(f'''"caption" : {i["caption"]}''')
-                url = i['url']
-                data = requests.get(url).content 
-                f = open(file_path,'wb',) 
-                f.write(data) 
-                f.close()        
+                if not os.path.isfile(file_path):
+                    file_path_for_file = os.path.join(f'{target}/posts/{key}', f'{i["taken_time"]} - {i["id"]}.txt')
+                    with open(file_path_for_file, "w", encoding="utf-8") as fh:
+                        fh.write(f'''"id" : {i["id"]}\n''')
+                        fh.write(f'''"code" : {i["code"]}\n''')
+                        fh.write(f'''"taken_time" : {i["taken_time"]}\n''')
+                        fh.write(f'''"likes" : {i["likes"]}\n''')
+                        fh.write(f'''"comment_count" : {i["comment_count"]}\n''')
+                        fh.write(f'''"caption" : {i["caption"]}''')
+                    url = i['url']
+                    data = requests.get(url).content 
+                    f = open(file_path,'wb',) 
+                    f.write(data) 
+                    f.close()        
             if (key == "igtv" or key == "videos" or key == "reels"):
                 file_path = os.path.join(f'{target}/posts/{key}', f'{i["taken_time"]} - {i["id"]}.mp4')
-                file_path_for_file = os.path.join(f'{target}/posts/{key}', f'{i["taken_time"]} - {i["id"]}.txt')
-                with open(file_path_for_file, "w", encoding="utf-8") as fh:
-                    fh.write(f'''"id" : {i["id"]}\n''')
-                    fh.write(f'''"code" : {i["code"]}\n''')
-                    fh.write(f'''"taken_time" : {i["taken_time"]}\n''')
-                    fh.write(f'''"likes" : {i["likes"]}\n''')
-                    fh.write(f'''"comment_count" : {i["comment_count"]}\n''')
-                    fh.write(f'''"caption" : {i["caption"]}\n''')
-                    fh.write(f'''"view_count" : {i["view_count"]}''')
-                url = i['url']
-                data = requests.get(url).content 
-                f = open(file_path,'wb',) 
-                f.write(data) 
-                f.close()
+                if not os.path.isfile(file_path):
+                    file_path_for_file = os.path.join(f'{target}/posts/{key}', f'{i["taken_time"]} - {i["id"]}.txt')
+                    with open(file_path_for_file, "w", encoding="utf-8") as fh:
+                        fh.write(f'''"id" : {i["id"]}\n''')
+                        fh.write(f'''"code" : {i["code"]}\n''')
+                        fh.write(f'''"taken_time" : {i["taken_time"]}\n''')
+                        fh.write(f'''"likes" : {i["likes"]}\n''')
+                        fh.write(f'''"comment_count" : {i["comment_count"]}\n''')
+                        fh.write(f'''"caption" : {i["caption"]}\n''')
+                        fh.write(f'''"view_count" : {i["view_count"]}''')
+                    url = i['url']
+                    data = requests.get(url).content 
+                    f = open(file_path,'wb',) 
+                    f.write(data) 
+                    f.close()
             if(key == "albums"):
                 temp = f'{i["taken_time"]} - {i["id"]}'
                 print(temp)
@@ -180,7 +183,8 @@ def media_downloader(final_sort, target):
                 for url in i["urls"]:
                     count += 1
                     file_path = os.path.join(f'{target}/posts/albums/{i["taken_time"]} - {i["id"]}', f'{count}.jpg')
-                    data = requests.get(url).content 
-                    f = open(file_path,'wb',) 
-                    f.write(data) 
-                    f.close()
+                    if not os.path.isfile(file_path):
+                        data = requests.get(url).content 
+                        f = open(file_path,'wb',) 
+                        f.write(data) 
+                        f.close()
