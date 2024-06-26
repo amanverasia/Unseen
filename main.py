@@ -2,6 +2,7 @@ from utils import generate_session, media_sorter, generate_user_info_file, user_
 from instagrapi import Client
 import os
 import pickle
+import requests
 
 def user_followers(user_id):
     followers_data = cl.user_followers(user_id)
@@ -99,7 +100,8 @@ while(True):
     print('4. Find Following')
     print('5. Download All Media')
     print('6. Download All Tagged Media')
-    print('7. Exit')
+    print('7. Download All Highlights')
+    print('8. Exit')
     choice = input('Enter Choice: ')
     clear_screen()
 
@@ -111,6 +113,9 @@ while(True):
 
     if "tagged_posts" not in os.listdir(target):
         os.mkdir(f"{target}/tagged_posts")
+
+    if "highlights" not in os.listdir(target):
+        os.mkdir(f"{target}/highlights")
     
     media_list = ["images","videos","igtv","reels","albums"]
     for key in media_list:
@@ -126,12 +131,12 @@ while(True):
         input('Press Enter to continue...')
         continue
 
-    if not (1<=int(choice)<=7 ):
+    if not (1<=int(choice)<=8 ):
         print('Invalid choice')
         input('Press Enter to continue...')
         continue
 
-    if(choice == '7'):
+    if(choice == '8'):
         break
 
     if(choice == '1'):
@@ -203,8 +208,59 @@ while(True):
             print('Done!')
             input('Press Enter to continue...')
             continue
+    elif(choice == '7' and session_file_exists and user_id):
+        print("Fetching all the Highlights, might take a while.")
+        highlights = cl.user_highlights(user_id)
+        for count, highlight in enumerate(highlights):
+            if f"{count+1} {highlight.pk}" not in os.listdir(f"{target}/highlights"):
+                os.mkdir(f"{target}/highlights/{count+1} {highlight.pk}")
+            file_path_for_file = os.path.join(f'{target}/highlights/{count+1} {highlight.pk}', 'cover.jpg')
+            data = requests.get(highlight.cover_media['cropped_image_version']['url']).content 
+            f = open(file_path_for_file,'wb',) 
+            f.write(data) 
+            f.close()
 
+            file_path_for_file = os.path.join(f'{target}/highlights/{count+1} {highlight.pk}', f'{count+1} {highlight.pk}.txt')
+            with open(file_path_for_file, "w", encoding="utf-8") as fh:
+                fh.write(f"Title: {highlight.title}\n")
+                fh.write(f"Highlight id is {highlight.pk}\n")
+                fh.write(f"Created at {highlight.created_at}\n")
+                fh.write(f"Media Count is {highlight.media_count}\n")
+                fh.write(f"Cover Image is {highlight.cover_media['cropped_image_version']['url']}\n")
+
+            highlight_info = cl.highlight_info(highlight.pk)
+            #print(highlight_info)
+            highlight_media = []
+            for count1,media in enumerate(highlight_info.items):
+                if media.media_type == 1:
+                    highlight_media.append([count1+1, media.thumbnail_url])
+                    file_path_for_file = os.path.join(f'{target}/highlights/{count+1} {highlight.pk}', f'{count1+1}.jpg')
+                    if not os.path.isfile(file_path_for_file):
+                        data = requests.get(media.thumbnail_url).content 
+                        f = open(file_path_for_file,'wb',) 
+                        f.write(data) 
+                        f.close()
+
+                if media.media_type == 2:
+                    highlight_media.append([count1+1, media.video_url])
+                    file_path_for_file = os.path.join(f'{target}/highlights/{count+1} {highlight.pk}', f'{count1+1}.mp4')
+                    if not os.path.isfile(file_path_for_file):
+                        data = requests.get(media.video_url).content 
+                        f = open(file_path_for_file,'wb',) 
+                        f.write(data) 
+                        f.close()
+
+            file_path_for_file = os.path.join(f'{target}/highlights/{count+1} {highlight.pk}', f'highlight_media_list.txt')
+            with open(file_path_for_file, "w", encoding="utf-8") as fh:
+                for i in highlight_media:
+                    fh.write(str(i))
+                    fh.write('\n')
+
+        with open(f"{target}/highlights/media.pickle", "ab") as fh:
+            pickle.dump(highlight_media, fh)
+        print('Done!')
+        input('Press Enter to continue...')
+        continue
     else:
-
         print('Congratulations, you broke the script somehow, contact the main author with screenshots and explanation as to what you did.')
 
