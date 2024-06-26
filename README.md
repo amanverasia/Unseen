@@ -42,7 +42,7 @@ You will need to enable 2FA in your Instagram account using TOTP and not SMS. It
 ## Pending Tasks
 - [x] Media Download
 - [x] Tagged Media Download
-- [ ] Highlights Download
+- [x] Highlights Download
 - [ ] Story Download
 - [x] Profile Picture Download
 - [ ] Hashtag analysis stuff
