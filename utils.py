@@ -111,17 +111,20 @@ def media_sorter(media: List[Any]) -> Dict[str, List[Dict[str, Any]]]:
         "images": [],    # media_type=1
         "videos": [],    # media_type=2 and product_type=feed
         "igtv": [],      # media_type=2 and product_type=igtv
-        "reels": [],     # media_type=2 and product_type=clips
+        "reels": [],     # media_type=2 and product_type=clips (from user_clips_v1)
         "albums": []     # media_type=8
     }
     
     for item in media:
         try:
             # Common fields for all media types
+            taken_at = getattr(item, 'taken_at', None)
+            taken_time = taken_at.strftime("%d-%m-%Y %H %M %S %Z") if taken_at else ''
+            
             base_data = {
-                "id": getattr(item, 'id', ''),
+                "id": getattr(item, 'id', '') or getattr(item, 'pk', ''),
                 "code": getattr(item, 'code', ''),
-                "taken_time": getattr(item, 'taken_at', '').strftime("%d-%m-%Y %H %M %S %Z") if hasattr(item, 'taken_at') else '',
+                "taken_time": taken_time,
                 "likes": getattr(item, 'like_count', 0),
                 "comment_count": getattr(item, 'comment_count', 0),
                 "caption": getattr(item, 'caption_text', '') or ''
@@ -130,31 +133,41 @@ def media_sorter(media: List[Any]) -> Dict[str, List[Dict[str, Any]]]:
             media_type = getattr(item, 'media_type', 0)
             product_type = getattr(item, 'product_type', '')
             
-            if media_type == 1:  # Images
+            if media_type == 1:  # Images/Photos
                 media_categories["images"].append({
                     **base_data,
                     "url": getattr(item, 'thumbnail_url', '')
                 })
                 
-            elif media_type == 2:  # Videos
+            elif media_type == 2:  # Videos (including reels)
+                # Check for video_url, sometimes it might be different
+                video_url = getattr(item, 'video_url', '')
+                
+                # Base video data
                 video_data = {
                     **base_data,
-                    "url": getattr(item, 'video_url', ''),
-                    "view_count": getattr(item, 'view_count', 0)
+                    "url": video_url
                 }
                 
-                if product_type == "feed":
-                    media_categories["videos"].append(video_data)
-                elif product_type == "igtv":
-                    media_categories["igtv"].append(video_data)
-                elif product_type == "clips":
+                if product_type == "clips":  # Reels
                     media_categories["reels"].append({
                         **video_data,
                         "thumbnail_url": getattr(item, 'thumbnail_url', ''),
-                        "view_count": getattr(item, 'play_count', 0)  # Reels use play_count
+                        "view_count": getattr(item, 'play_count', getattr(item, 'view_count', 0)),
+                        "clips_metadata": getattr(item, 'clips_metadata', {})
+                    })
+                elif product_type == "igtv":  # IGTV
+                    media_categories["igtv"].append({
+                        **video_data,
+                        "view_count": getattr(item, 'view_count', 0)
+                    })
+                else:  # Regular feed videos (product_type == "feed" or empty)
+                    media_categories["videos"].append({
+                        **video_data,
+                        "view_count": getattr(item, 'view_count', 0)
                     })
                     
-            elif media_type == 8:  # Albums
+            elif media_type == 8:  # Albums/Carousels
                 album_urls = []
                 resources = getattr(item, 'resources', [])
                 

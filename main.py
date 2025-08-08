@@ -93,6 +93,66 @@ class InstagramTool:
             print(f"Error fetching user media: {e}")
             return {}
 
+    def fetch_posts_only(self) -> Dict[str, List[Dict[str, Any]]]:
+        """Fetch only posts (images and albums) from user_medias_v1."""
+        if not self.client or not self.user_id:
+            return {}
+        try:
+            posts_media = self.client.user_medias_v1(self.user_id)
+            sorted_media = media_sorter(posts_media)
+            
+            # Return only images and albums, filter out videos/igtv
+            return {
+                "images": sorted_media.get("images", []),
+                "albums": sorted_media.get("albums", []),
+                "videos": [],
+                "igtv": [],
+                "reels": []
+            }
+        except Exception as e:
+            print(f"Error fetching posts: {e}")
+            return {}
+
+    def fetch_reels_only(self) -> Dict[str, List[Dict[str, Any]]]:
+        """Fetch only reels using user_clips_v1."""
+        if not self.client or not self.user_id:
+            return {}
+        try:
+            clips_media = self.client.user_clips_v1(self.user_id)
+            sorted_media = media_sorter(clips_media)
+            
+            # Return only reels
+            return {
+                "reels": sorted_media.get("reels", []),
+                "images": [],
+                "albums": [],
+                "videos": [],
+                "igtv": []
+            }
+        except Exception as e:
+            print(f"Error fetching reels: {e}")
+            return {}
+
+    def fetch_videos_only(self) -> Dict[str, List[Dict[str, Any]]]:
+        """Fetch only regular videos and IGTV from user_medias_v1."""
+        if not self.client or not self.user_id:
+            return {}
+        try:
+            posts_media = self.client.user_medias_v1(self.user_id)
+            sorted_media = media_sorter(posts_media)
+            
+            # Return only videos and igtv, filter out images/albums
+            return {
+                "videos": sorted_media.get("videos", []),
+                "igtv": sorted_media.get("igtv", []),
+                "images": [],
+                "albums": [],
+                "reels": []
+            }
+        except Exception as e:
+            print(f"Error fetching videos: {e}")
+            return {}
+
     def fetch_tagged_media(self) -> Dict[str, List[Dict[str, Any]]]:
         """Fetch tagged media for user."""
         if not self.client or not self.user_id:
@@ -216,14 +276,17 @@ def display_menu(target: str):
     display_banner()
     print(f'Current Target: "{target}"\n')
     print('Choose one of the following options:')
-    print('1. Generate Session File and User ID')
-    print('2. Summary of target')
-    print('3. Find Followers')
-    print('4. Find Following')
-    print('5. Download All Media')
-    print('6. Download All Tagged Media')
-    print('7. Download All Highlights')
-    print('8. Exit')
+    print('1.  Generate Session File and User ID')
+    print('2.  Summary of target')
+    print('3.  Find Followers')
+    print('4.  Find Following')
+    print('5.  Download All Media (Posts + Reels)')
+    print('6.  Download Posts Only (Images + Albums)')
+    print('7.  Download Reels Only')
+    print('8.  Download Videos Only (Feed + IGTV)')
+    print('9.  Download All Tagged Media')
+    print('10. Download All Highlights')
+    print('11. Exit')
 
 def get_valid_choice() -> str:
     """Get and validate user choice."""
@@ -231,12 +294,12 @@ def get_valid_choice() -> str:
         choice = input('\nEnter Choice: ').strip()
         
         if not choice.isdigit():
-            print('Invalid choice. Please enter a number between 1-8.')
+            print('Invalid choice. Please enter a number between 1-11.')
             continue
             
         choice_num = int(choice)
-        if not (1 <= choice_num <= 8):
-            print('Invalid choice. Please enter a number between 1-8.')
+        if not (1 <= choice_num <= 11):
+            print('Invalid choice. Please enter a number between 1-11.')
             continue
             
         return choice
@@ -282,10 +345,10 @@ def main():
         clear_screen()
         
         # Setup directories for all operations except exit
-        if choice != '8':
+        if choice != '11':
             tool.setup_directories()
         
-        if choice == '8':
+        if choice == '11':
             print("Goodbye!")
             break
             
@@ -359,23 +422,74 @@ def main():
             wait_for_user()
             
         elif choice == '5':
-            # Download all media
+            # Download all media (posts + reels)
             if not tool.session_exists or not tool.user_id:
                 print('Please generate session and user ID first (Option 1).')
                 wait_for_user()
                 continue
                 
-            print("Fetching all media... This might take a while.")
+            print("Fetching all media (posts + reels)... This might take a while.")
             media_data = tool.fetch_user_media()
             if media_data:
                 save_media_data(media_data, tool.target, "posts")
                 media_downloader(media_data, tool.target)
-                print('Media download completed!')
+                print('All media download completed!')
             else:
                 print('Failed to fetch media.')
             wait_for_user()
             
         elif choice == '6':
+            # Download posts only (images + albums)
+            if not tool.session_exists or not tool.user_id:
+                print('Please generate session and user ID first (Option 1).')
+                wait_for_user()
+                continue
+                
+            print("Fetching posts only (images + albums)... This might take a while.")
+            posts_data = tool.fetch_posts_only()
+            if posts_data:
+                save_media_data(posts_data, tool.target, "posts")
+                media_downloader(posts_data, tool.target)
+                print('Posts download completed!')
+            else:
+                print('Failed to fetch posts.')
+            wait_for_user()
+            
+        elif choice == '7':
+            # Download reels only
+            if not tool.session_exists or not tool.user_id:
+                print('Please generate session and user ID first (Option 1).')
+                wait_for_user()
+                continue
+                
+            print("Fetching reels only... This might take a while.")
+            reels_data = tool.fetch_reels_only()
+            if reels_data:
+                save_media_data(reels_data, tool.target, "posts")
+                media_downloader(reels_data, tool.target)
+                print('Reels download completed!')
+            else:
+                print('Failed to fetch reels.')
+            wait_for_user()
+            
+        elif choice == '8':
+            # Download videos only (feed + IGTV)
+            if not tool.session_exists or not tool.user_id:
+                print('Please generate session and user ID first (Option 1).')
+                wait_for_user()
+                continue
+                
+            print("Fetching videos only (feed + IGTV)... This might take a while.")
+            videos_data = tool.fetch_videos_only()
+            if videos_data:
+                save_media_data(videos_data, tool.target, "posts")
+                media_downloader(videos_data, tool.target)
+                print('Videos download completed!')
+            else:
+                print('Failed to fetch videos.')
+            wait_for_user()
+            
+        elif choice == '9':
             # Download tagged media
             if not tool.session_exists or not tool.user_id:
                 print('Please generate session and user ID first (Option 1).')
@@ -392,7 +506,7 @@ def main():
                 print('Failed to fetch tagged media.')
             wait_for_user()
             
-        elif choice == '7':
+        elif choice == '10':
             # Download highlights
             if not tool.session_exists or not tool.user_id:
                 print('Please generate session and user ID first (Option 1).')
