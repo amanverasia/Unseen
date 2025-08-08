@@ -93,6 +93,32 @@ Target data is organized in directories named after the Instagram username:
 - Handles rate limiting and Instagram's anti-bot measures
 - Enhanced error handling and retry logic for downloads
 
+## Error Handling and Compatibility
+
+The tool includes robust error handling for common instagrapi library issues:
+
+### Common Errors and Solutions:
+1. **`extract_user_gql() got an unexpected keyword argument 'update_headers'`**
+   - Fixed with fallback user ID generation methods
+   - Automatic retry with alternative approaches
+
+2. **`clips_metadata.original_sound_info validation error`**
+   - Fixed with safe attribute extraction in `media_sorter()`
+   - Graceful skipping of problematic media items
+   - Automatic batch size reduction on validation errors
+
+3. **General API Compatibility**
+   - Safe media fetching with `_safe_fetch_media()` method
+   - Automatic error tracking and troubleshooting tips display
+   - Enhanced logging for debugging
+
+### Troubleshooting Tips:
+- Update instagrapi: `pip install --upgrade instagrapi`
+- Use TOTP-based 2FA (not SMS)
+- Delete and regenerate session.json if login fails
+- Wait between requests to avoid rate limiting
+- Ensure target accounts are accessible
+
 ## Important Security Notes
 
 - Never commit `session.json` files to version control

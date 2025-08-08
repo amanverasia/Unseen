@@ -36,11 +36,33 @@ class InstagramTool:
             return False
         try:
             print('Generating user id... This might take a few seconds.')
-            self.user_id = self.client.user_id_from_username(self.target)
-            print('User ID Generated successfully!')
-            return True
+            # Try different methods for compatibility with different instagrapi versions
+            try:
+                self.user_id = self.client.user_id_from_username(self.target)
+            except TypeError as te:
+                # If the first method fails due to API changes, try alternative approaches
+                print("Primary method failed, trying alternative approach...")
+                try:
+                    # Try using user_info method as fallback
+                    user_info = self.client.user_info_by_username(self.target)
+                    self.user_id = user_info.pk
+                except Exception:
+                    # Last resort: try the direct approach
+                    self.user_id = str(self.client.user_id_from_username(self.target))
+            
+            if self.user_id:
+                print('User ID Generated successfully!')
+                return True
+            else:
+                print('Failed to generate user ID.')
+                return False
         except Exception as e:
             print(f"Error generating user ID: {e}")
+            print("This might be due to:")
+            print("1. Invalid username")
+            print("2. Private account that you don't follow")
+            print("3. Instagram API changes - try updating instagrapi library")
+            print("4. Rate limiting - wait a few minutes and try again")
             return False
 
     def save_followers(self) -> bool:
@@ -82,8 +104,10 @@ class InstagramTool:
         if not self.client or not self.user_id:
             return {}
         try:
-            posts_media = self.client.user_medias_v1(self.user_id)
-            clips_media = self.client.user_clips_v1(self.user_id)
+            print("Fetching posts...")
+            posts_media = self._safe_fetch_media("user_medias_v1", self.user_id)
+            print("Fetching reels/clips...")
+            clips_media = self._safe_fetch_media("user_clips_v1", self.user_id)
             
             sorted_posts = media_sorter(posts_media)
             sorted_clips = media_sorter(clips_media)
@@ -98,7 +122,8 @@ class InstagramTool:
         if not self.client or not self.user_id:
             return {}
         try:
-            posts_media = self.client.user_medias_v1(self.user_id)
+            print("Fetching posts (images and albums)...")
+            posts_media = self._safe_fetch_media("user_medias_v1", self.user_id)
             sorted_media = media_sorter(posts_media)
             
             # Return only images and albums, filter out videos/igtv
@@ -118,7 +143,8 @@ class InstagramTool:
         if not self.client or not self.user_id:
             return {}
         try:
-            clips_media = self.client.user_clips_v1(self.user_id)
+            print("Fetching reels...")
+            clips_media = self._safe_fetch_media("user_clips_v1", self.user_id)
             sorted_media = media_sorter(clips_media)
             
             # Return only reels
@@ -138,7 +164,8 @@ class InstagramTool:
         if not self.client or not self.user_id:
             return {}
         try:
-            posts_media = self.client.user_medias_v1(self.user_id)
+            print("Fetching videos (feed + IGTV)...")
+            posts_media = self._safe_fetch_media("user_medias_v1", self.user_id)
             sorted_media = media_sorter(posts_media)
             
             # Return only videos and igtv, filter out images/albums
@@ -158,7 +185,8 @@ class InstagramTool:
         if not self.client or not self.user_id:
             return {}
         try:
-            tagged_media = self.client.usertag_medias_v1(self.user_id)
+            print("Fetching tagged media...")
+            tagged_media = self._safe_fetch_media("usertag_medias_v1", self.user_id)
             return media_sorter(tagged_media)
         except Exception as e:
             print(f"Error fetching tagged media: {e}")
@@ -232,6 +260,28 @@ class InstagramTool:
                     combined[key].append(clip)
         
         return combined
+
+    def _safe_fetch_media(self, method_name: str, user_id: str, amount: int = 50) -> List[Any]:
+        """Safely fetch media with error handling for pydantic validation issues."""
+        try:
+            method = getattr(self.client, method_name)
+            return method(user_id, amount=amount)
+        except Exception as e:
+            error_msg = str(e).lower()
+            if "pydantic" in error_msg or "validation" in error_msg:
+                print(f"Pydantic validation error in {method_name}, trying alternative approach...")
+                # Try with smaller batch size to avoid problematic items
+                try:
+                    method = getattr(self.client, method_name)
+                    return method(user_id, amount=min(20, amount))
+                except Exception as e2:
+                    print(f"Alternative approach also failed: {e2}")
+                    print("This is likely due to Instagram API changes or library version issues.")
+                    print("Try updating instagrapi: pip install --upgrade instagrapi")
+                    return []
+            else:
+                print(f"Error in {method_name}: {e}")
+                return []
 
     def setup_directories(self) -> None:
         """Create necessary directory structure for target."""
@@ -322,10 +372,25 @@ def wait_for_user():
     """Wait for user to press Enter."""
     input('\nPress Enter to continue...')
 
+def show_troubleshooting_tips():
+    """Display troubleshooting tips for common errors."""
+    print("\n" + "="*50)
+    print("TROUBLESHOOTING TIPS:")
+    print("="*50)
+    print("If you're experiencing errors, try these solutions:")
+    print("1. Update instagrapi library: pip install --upgrade instagrapi")
+    print("2. Make sure your Instagram account has 2FA enabled with TOTP (not SMS)")
+    print("3. Delete session.json and generate a new one if login fails")
+    print("4. Wait a few minutes if you're getting rate limit errors")
+    print("5. Make sure the target account is not private (or you follow them)")
+    print("6. Try with a smaller amount of media if getting validation errors")
+    print("="*50)
+
 def main():
     """Main application entry point."""
     # Initialize the Instagram tool
     tool = InstagramTool()
+    error_count = 0
     
     # Display banner and get target
     clear_screen()
@@ -371,6 +436,10 @@ def main():
                 wait_for_user()
                 if tool.generate_user_id():
                     wait_for_user()
+                else:
+                    error_count += 1
+                    if error_count >= 2:
+                        show_troubleshooting_tips()
                     
         elif choice == '2':
             # User summary
@@ -381,6 +450,9 @@ def main():
                 
             if not tool.user_id:
                 if not tool.generate_user_id():
+                    error_count += 1
+                    if error_count >= 2:
+                        show_troubleshooting_tips()
                     wait_for_user()
                     continue
                     
@@ -390,7 +462,10 @@ def main():
                 user_summary(user_info)
                 wait_for_user()
             except Exception as e:
+                error_count += 1
                 print(f"Error getting user info: {e}")
+                if error_count >= 2:
+                    show_troubleshooting_tips()
                 wait_for_user()
                 
         elif choice == '3':

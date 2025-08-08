@@ -115,19 +115,25 @@ def media_sorter(media: List[Any]) -> Dict[str, List[Dict[str, Any]]]:
         "albums": []     # media_type=8
     }
     
+    processed_count = 0
+    error_count = 0
+    
     for item in media:
         try:
-            # Common fields for all media types
+            # Common fields for all media types - use safe attribute access
             taken_at = getattr(item, 'taken_at', None)
-            taken_time = taken_at.strftime("%d-%m-%Y %H %M %S %Z") if taken_at else ''
+            try:
+                taken_time = taken_at.strftime("%d-%m-%Y %H %M %S %Z") if taken_at else ''
+            except:
+                taken_time = str(taken_at) if taken_at else ''
             
             base_data = {
-                "id": getattr(item, 'id', '') or getattr(item, 'pk', ''),
-                "code": getattr(item, 'code', ''),
+                "id": str(getattr(item, 'id', '') or getattr(item, 'pk', '')),
+                "code": str(getattr(item, 'code', '')),
                 "taken_time": taken_time,
-                "likes": getattr(item, 'like_count', 0),
-                "comment_count": getattr(item, 'comment_count', 0),
-                "caption": getattr(item, 'caption_text', '') or ''
+                "likes": int(getattr(item, 'like_count', 0) or 0),
+                "comment_count": int(getattr(item, 'comment_count', 0) or 0),
+                "caption": str(getattr(item, 'caption_text', '') or '')
             }
             
             media_type = getattr(item, 'media_type', 0)
@@ -136,12 +142,12 @@ def media_sorter(media: List[Any]) -> Dict[str, List[Dict[str, Any]]]:
             if media_type == 1:  # Images/Photos
                 media_categories["images"].append({
                     **base_data,
-                    "url": getattr(item, 'thumbnail_url', '')
+                    "url": str(getattr(item, 'thumbnail_url', ''))
                 })
                 
             elif media_type == 2:  # Videos (including reels)
                 # Check for video_url, sometimes it might be different
-                video_url = getattr(item, 'video_url', '')
+                video_url = str(getattr(item, 'video_url', ''))
                 
                 # Base video data
                 video_data = {
@@ -150,21 +156,31 @@ def media_sorter(media: List[Any]) -> Dict[str, List[Dict[str, Any]]]:
                 }
                 
                 if product_type == "clips":  # Reels
+                    # Handle clips_metadata safely to avoid pydantic validation errors
+                    clips_metadata = {}
+                    try:
+                        clips_meta = getattr(item, 'clips_metadata', None)
+                        if clips_meta and hasattr(clips_meta, '__dict__'):
+                            clips_metadata = {k: v for k, v in clips_meta.__dict__.items() 
+                                            if v is not None and not k.startswith('_')}
+                    except:
+                        clips_metadata = {}
+                    
                     media_categories["reels"].append({
                         **video_data,
-                        "thumbnail_url": getattr(item, 'thumbnail_url', ''),
-                        "view_count": getattr(item, 'play_count', getattr(item, 'view_count', 0)),
-                        "clips_metadata": getattr(item, 'clips_metadata', {})
+                        "thumbnail_url": str(getattr(item, 'thumbnail_url', '')),
+                        "view_count": int(getattr(item, 'play_count', getattr(item, 'view_count', 0)) or 0),
+                        "clips_metadata": clips_metadata
                     })
                 elif product_type == "igtv":  # IGTV
                     media_categories["igtv"].append({
                         **video_data,
-                        "view_count": getattr(item, 'view_count', 0)
+                        "view_count": int(getattr(item, 'view_count', 0) or 0)
                     })
                 else:  # Regular feed videos (product_type == "feed" or empty)
                     media_categories["videos"].append({
                         **video_data,
-                        "view_count": getattr(item, 'view_count', 0)
+                        "view_count": int(getattr(item, 'view_count', 0) or 0)
                     })
                     
             elif media_type == 8:  # Albums/Carousels
@@ -172,25 +188,35 @@ def media_sorter(media: List[Any]) -> Dict[str, List[Dict[str, Any]]]:
                 resources = getattr(item, 'resources', [])
                 
                 for resource in resources:
-                    resource_type = getattr(resource, 'media_type', 0)
-                    if resource_type == 1:  # Image in album
-                        url = getattr(resource, 'thumbnail_url', '')
-                    elif resource_type == 2:  # Video in album
-                        url = getattr(resource, 'video_url', '')
-                    else:
+                    try:
+                        resource_type = getattr(resource, 'media_type', 0)
+                        if resource_type == 1:  # Image in album
+                            url = str(getattr(resource, 'thumbnail_url', ''))
+                        elif resource_type == 2:  # Video in album
+                            url = str(getattr(resource, 'video_url', ''))
+                        else:
+                            continue
+                        
+                        if url:
+                            album_urls.append(url)
+                    except:
                         continue
-                    
-                    if url:
-                        album_urls.append(url)
                 
                 media_categories["albums"].append({
                     **base_data,
                     "urls": album_urls
                 })
+            
+            processed_count += 1
                 
         except Exception as e:
-            print(f"Error processing media item: {e}")
+            error_count += 1
+            print(f"Warning: Skipped problematic media item ({error_count}): {str(e)[:100]}...")
             continue
+    
+    if processed_count > 0:
+        print(f"Successfully processed {processed_count} media items" + 
+              (f" ({error_count} skipped due to errors)" if error_count > 0 else ""))
     
     return media_categories
 
