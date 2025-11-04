@@ -1,2 +1,0 @@
-instagrapi
-requests
