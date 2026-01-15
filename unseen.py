@@ -374,6 +374,44 @@ def download_shortcode(loader: instaloader.Instaloader) -> None:
     print("Done.")
 
 
+def download_followers_list(loader: instaloader.Instaloader, base_dir: str) -> None:
+    if not loader.context.is_logged_in:
+        print("Followers list requires login.")
+        return
+    username = prompt("Target profile username")
+    profile = get_profile(loader, username)
+    if not profile:
+        return
+    output_dir = Path(base_dir) / profile.username
+    ensure_dir(str(output_dir))
+    output_path = output_dir / "followers.txt"
+    count = 0
+    with open(output_path, "w", encoding="utf-8") as handle:
+        for follower in profile.get_followers():
+            handle.write(f"{follower.username}\n")
+            count += 1
+    print(f"Saved {count} followers to {output_path}")
+
+
+def download_following_list(loader: instaloader.Instaloader, base_dir: str) -> None:
+    if not loader.context.is_logged_in:
+        print("Following list requires login.")
+        return
+    username = prompt("Target profile username")
+    profile = get_profile(loader, username)
+    if not profile:
+        return
+    output_dir = Path(base_dir) / profile.username
+    ensure_dir(str(output_dir))
+    output_path = output_dir / "following.txt"
+    count = 0
+    with open(output_path, "w", encoding="utf-8") as handle:
+        for followee in profile.get_followees():
+            handle.write(f"{followee.username}\n")
+            count += 1
+    print(f"Saved {count} following to {output_path}")
+
+
 def toggle_setting(
     config: Dict[str, Any], keys: Optional[list[str]] = None, title: str = "Toggle Options"
 ) -> None:
@@ -505,7 +543,9 @@ def main() -> None:
             "  4. Download profile highlights\n"
             "  5. Download hashtag\n"
             "  6. Download post by shortcode\n"
-            "  7. Settings & account\n"
+            "  7. Download followers list\n"
+            "  8. Download following list\n"
+            "  9. Settings & account\n"
             "  0. Exit"
         )
         choice = prompt("Select option", default="0")
@@ -528,6 +568,12 @@ def main() -> None:
             download_shortcode(loader)
             pause()
         elif choice == "7":
+            download_followers_list(loader, base_dir)
+            pause()
+        elif choice == "8":
+            download_following_list(loader, base_dir)
+            pause()
+        elif choice == "9":
             loader, active_user = settings_menu(
                 loader, config, base_dir, session_root, active_user
             )
