@@ -112,3 +112,6 @@ may result from use of this tool. Use it ethically, respect privacy, and avoid e
 - Rich TUI (panels, tables, live progress) with `rich`.
 - Scheduling mode (run nightly/weekly tasks).
 - Plug-in system for custom download targets or pipelines.
+
+
+GIVE A STAR IF YOU DOWNLOAD IT. BE NICE.
