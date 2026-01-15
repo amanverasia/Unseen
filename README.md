@@ -1,5 +1,13 @@
 # Unseen
 
+```
+ _   _ _   _ ____  _____ _____ _   _
+| | | | \ | / ___|| ____| ____| \ | |
+| | | |  \| \___ \|  _| |  _| |  \| |
+| |_| | |\  |___) | |___| |___| |\  |
+ \___/|_| \_|____/|_____|_____|_| \_|
+```
+
 Interactive CLI for downloading Instagram content with Instaloader.
 
 ## Features
