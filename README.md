@@ -1,48 +1,34 @@
-# UNSEEN                                                          
-<pre>@@@  @@@  @@@  @@@   @@@@@@   @@@@@@@@  @@@@@@@@  @@@  @@@  
-@@@  @@@  @@@@ @@@  @@@@@@@   @@@@@@@@  @@@@@@@@  @@@@ @@@  
-@@!  @@@  @@!@!@@@  !@@       @@!       @@!       @@!@!@@@  
-!@!  @!@  !@!!@!@!  !@!       !@!       !@!       !@!!@!@!  
-@!@  !@!  @!@ !!@!  !!@@!!    @!!!:!    @!!!:!    @!@ !!@!  
-!@!  !!!  !@!  !!!   !!@!!!   !!!!!:    !!!!!:    !@!  !!!  
-!!:  !!!  !!:  !!!       !:!  !!:       !!:       !!:  !!!  
-:!:  !:!  :!:  !:!      !:!   :!:       :!:       :!:  !:!  
-::::: ::   ::   ::  :::: ::    :: ::::   :: ::::   ::   ::  
- : :  :   ::    :   :: : :    : :: ::   : :: ::   ::    :   </pre>
-                                                        
+# Instaloader Menu
 
-## Disclaimer
-I take no responsiblity legal or otherwise if Instagram decides to ban your account, please use at your own discretion and choice.
+Interactive CLI for downloading Instagram content with Instaloader.
 
-## Prerequisites
-If on Unix based system
+## Requirements
+
+- Python 3.8+
+- `instaloader` (see `requirements.txt`)
+
+## Setup
+
 ```bash
-pip3 install -r requirements.txt
-```
-
-If on Windows
-```cmd
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Running the script
-If on Unix based system
+## Usage
+
 ```bash
-python3 main.py
+python instaloader_menu.py
 ```
 
-If on Windows
-```cmd
-python main.py
-```
+You can log in from the menu to access private content you follow, stories, and highlights.
 
-## Additional Information
-You will need to enable 2FA in your Instagram account using TOTP and not SMS. It is were you use an app like Authy or Google Authenticator to generate 2FA codes on the fly. You will also have to approve the Instagram login one time from your app to generate the session.json file.
+## Notes
 
-## Pending Tasks
-- [x] Media Download
-- [x] Tagged Media Download
-- [x] Highlights Download
-- [ ] Story Download
-- [x] Profile Picture Download
-- [ ] Hashtag analysis stuff
+- Downloads are saved under the directory you choose at startup.
+- Some actions require login (stories, highlights, private profiles).
+- Use responsibly and follow Instagram's terms and Instaloader documentation.
+
+## Documentation
+
+- Instaloader: https://instaloader.github.io/

@@ -1,2 +1,1 @@
-instagrapi
-requests
+instaloader
