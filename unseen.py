@@ -25,6 +25,10 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "download_video_thumbnails": True,
     "save_metadata": True,
     "compress_json": True,
+    "download_pictures": True,
+    "download_videos": True,
+    "fast_update": False,
+    "max_posts": 0,
 }
 SESSION_DIR_NAME = ".instaloader_session"
 SESSION_SUFFIX = ".session"
@@ -37,8 +41,9 @@ BANNER = r"""
  \___/|_| \_|____/|_____|_____|_| \_|
 """
 
-ACCENT = "\033[96m"
-RESET = "\033[0m"
+USE_COLOR = sys.stdout.isatty()
+ACCENT = "\033[96m" if USE_COLOR else ""
+RESET = "\033[0m" if USE_COLOR else ""
 INVALID_PATH_CHARS = '<>:"/\\|?*'
 
 
@@ -63,6 +68,14 @@ def safe_dir_name(value: str, fallback: str = "untitled") -> str:
     return cleaned or fallback
 
 
+def max_posts_limit(config: Dict[str, Any]) -> int:
+    try:
+        limit = int(config.get("max_posts", 0))
+    except (TypeError, ValueError):
+        return 0
+    return max(0, limit)
+
+
 def build_loader(base_dir: str, config: Dict[str, Any]) -> instaloader.Instaloader:
     loader = instaloader.Instaloader(
         download_comments=config["download_comments"],
@@ -70,8 +83,8 @@ def build_loader(base_dir: str, config: Dict[str, Any]) -> instaloader.Instaload
         download_video_thumbnails=config["download_video_thumbnails"],
         save_metadata=config["save_metadata"],
         compress_json=config["compress_json"],
-        download_pictures=True,
-        download_videos=True,
+        download_pictures=config["download_pictures"],
+        download_videos=config["download_videos"],
         quiet=False,
     )
     loader.dirname_pattern = os.path.join(base_dir, "{target}")
@@ -86,7 +99,22 @@ def clear_screen() -> None:
 def print_banner() -> None:
     clear_screen()
     print(f"{ACCENT}{BANNER}{RESET}")
-    print("UNSEEN\n")
+    print(f"{ACCENT}UNSEEN{RESET}\n")
+
+
+def print_screen(title: str, status_lines: Optional[list[str]] = None) -> None:
+    print_banner()
+    print(f"{ACCENT}{title}{RESET}")
+    print("-" * 52)
+    if status_lines:
+        for line in status_lines:
+            print(line)
+        print("")
+
+
+def pause(message: str = "Press Enter to continue") -> None:
+    if sys.stdin.isatty():
+        input(message)
 
 
 def repo_root() -> str:
@@ -224,30 +252,48 @@ def get_profile(loader: instaloader.Instaloader, username: str) -> Optional[inst
         return None
 
 
-def download_profile_all(loader: instaloader.Instaloader) -> None:
+def download_profile_all(loader: instaloader.Instaloader, config: Dict[str, Any]) -> None:
     username = prompt("Target profile username")
     profile = get_profile(loader, username)
     if not profile:
         return
     target = Path(profile.username) / "posts"
+    processed = 0
     downloaded = 0
+    max_posts = max_posts_limit(config)
+    fast_update = bool(config.get("fast_update", False))
     for post in profile.get_posts():
-        loader.download_post(post, target=target)
-        downloaded += 1
+        if max_posts and processed >= max_posts:
+            break
+        did_download = loader.download_post(post, target=target)
+        processed += 1
+        if did_download:
+            downloaded += 1
+        if fast_update and not did_download:
+            break
     print(f"Done. Downloaded {downloaded} posts.")
 
 
-def download_profile_videos(loader: instaloader.Instaloader) -> None:
+def download_profile_videos(loader: instaloader.Instaloader, config: Dict[str, Any]) -> None:
     username = prompt("Target profile username")
     profile = get_profile(loader, username)
     if not profile:
         return
+    processed = 0
     downloaded = 0
     target = Path(profile.username) / "videos"
+    max_posts = max_posts_limit(config)
+    fast_update = bool(config.get("fast_update", False))
     for post in profile.get_posts():
         if getattr(post, "is_video", False):
-            loader.download_post(post, target=target)
-            downloaded += 1
+            if max_posts and processed >= max_posts:
+                break
+            did_download = loader.download_post(post, target=target)
+            processed += 1
+            if did_download:
+                downloaded += 1
+            if fast_update and not did_download:
+                break
     print(f"Done. Downloaded {downloaded} video posts.")
 
 
@@ -261,7 +307,7 @@ def download_profile_stories(loader: instaloader.Instaloader) -> None:
         return
     target = Path(profile.username) / "stories"
     loader.download_stories(userids=[profile.userid], filename_target=target)
-    print("Done.")
+    print(f"Done. Downloaded {downloaded} hashtag posts.")
 
 
 def download_profile_highlights(loader: instaloader.Instaloader) -> None:
@@ -292,7 +338,7 @@ def download_profile_highlights(loader: instaloader.Instaloader) -> None:
     print("Done.")
 
 
-def download_hashtag(loader: instaloader.Instaloader) -> None:
+def download_hashtag(loader: instaloader.Instaloader, config: Dict[str, Any]) -> None:
     tag = prompt("Hashtag (without #)")
     try:
         hashtag = instaloader.Hashtag.from_name(loader.context, tag)
@@ -300,8 +346,19 @@ def download_hashtag(loader: instaloader.Instaloader) -> None:
         print(f"Hashtag not found: {tag}")
         return
     target = Path("hashtags") / safe_dir_name(tag, fallback="tag")
+    processed = 0
+    downloaded = 0
+    max_posts = max_posts_limit(config)
+    fast_update = bool(config.get("fast_update", False))
     for post in hashtag.get_posts():
-        loader.download_post(post, target=target)
+        if max_posts and processed >= max_posts:
+            break
+        did_download = loader.download_post(post, target=target)
+        processed += 1
+        if did_download:
+            downloaded += 1
+        if fast_update and not did_download:
+            break
     print("Done.")
 
 
@@ -317,10 +374,13 @@ def download_shortcode(loader: instaloader.Instaloader) -> None:
     print("Done.")
 
 
-def toggle_setting(config: Dict[str, Any]) -> None:
-    keys = list(config.keys())
+def toggle_setting(
+    config: Dict[str, Any], keys: Optional[list[str]] = None, title: str = "Toggle Options"
+) -> None:
+    if keys is None:
+        keys = [key for key, value in config.items() if isinstance(value, bool)]
     while True:
-        print("\nSettings:")
+        print_screen(title)
         for idx, key in enumerate(keys, start=1):
             print(f"  {idx}. {key} = {config[key]}")
         print("  0. Back")
@@ -341,6 +401,27 @@ def toggle_setting(config: Dict[str, Any]) -> None:
             print("Only boolean settings can be toggled here.")
 
 
+def set_max_posts(config: Dict[str, Any]) -> None:
+    print_screen("Max Items Per Download")
+    current = max_posts_limit(config)
+    value = prompt("Max items per download (0 = unlimited)", default=str(current))
+    try:
+        limit = int(value)
+        if limit < 0:
+            raise ValueError
+    except ValueError:
+        print("Please enter a non-negative integer.")
+        return
+    config["max_posts"] = limit
+
+
+def toggle_fast_update(config: Dict[str, Any]) -> None:
+    print_screen("Fast Update")
+    current = bool(config.get("fast_update", False))
+    config["fast_update"] = not current
+    print(f"fast_update = {config['fast_update']}")
+
+
 def settings_menu(
     loader: instaloader.Instaloader,
     config: Dict[str, Any],
@@ -349,25 +430,51 @@ def settings_menu(
     active_user: Optional[str],
 ) -> tuple[instaloader.Instaloader, Optional[str]]:
     while True:
+        status = [
+            f"Download dir: {base_dir}",
+            f"Account: {loader.context.username if loader.context.is_logged_in else 'Not logged in'}",
+        ]
+        print_screen("Settings & Account", status_lines=status)
         print(
-            "\nSettings\n"
             "  1. Toggle download options\n"
-            "  2. Log out (delete saved session)\n"
-            "  3. Log in / switch account\n"
+            "  2. Set max items per download\n"
+            "  3. Toggle fast update (stop on already-downloaded)\n"
+            "  4. Log out (delete saved session)\n"
+            "  5. Log in / switch account\n"
             "  0. Back"
         )
         choice = prompt("Select option", default="0")
         if choice == "1":
-            toggle_setting(config)
+            toggle_setting(
+                config,
+                keys=[
+                    "download_pictures",
+                    "download_videos",
+                    "download_video_thumbnails",
+                    "download_comments",
+                    "download_geotags",
+                    "save_metadata",
+                    "compress_json",
+                ],
+                title="Download Options",
+            )
             loader = build_loader(base_dir, config)
             active_user = reload_session(loader, session_root, active_user)
         elif choice == "2":
+            set_max_posts(config)
+            pause()
+        elif choice == "3":
+            toggle_fast_update(config)
+            pause()
+        elif choice == "4":
             logout_session(session_root, active_user)
             active_user = None
             loader = build_loader(base_dir, config)
-        elif choice == "3":
+            pause()
+        elif choice == "5":
             loader = build_loader(base_dir, config)
             active_user = login_and_save_session(loader, session_root)
+            pause()
         elif choice == "0":
             return loader, active_user
         else:
@@ -375,7 +482,7 @@ def settings_menu(
 
 
 def main() -> None:
-    print_banner()
+    print_screen("Welcome")
     base_dir = ensure_dir(prompt("Download directory", default="downloads"))
     config = dict(DEFAULT_CONFIG)
     loader = build_loader(base_dir, config)
@@ -386,14 +493,12 @@ def main() -> None:
         active_user = login_and_save_session(loader, session_root)
 
     while True:
-        print_banner()
-        print(f"Download directory: {base_dir}")
-        if loader.context.is_logged_in:
-            print(f"Logged in as: {loader.context.username}\n")
-        else:
-            print("Not logged in\n")
+        status = [
+            f"Download dir: {base_dir}",
+            f"Account: {loader.context.username if loader.context.is_logged_in else 'Not logged in'}",
+        ]
+        print_screen("Main Menu", status_lines=status)
         print(
-            "Main Menu\n"
             "  1. Download profile (all posts, reels, videos)\n"
             "  2. Download reels (video posts)\n"
             "  3. Download profile stories\n"
@@ -405,17 +510,23 @@ def main() -> None:
         )
         choice = prompt("Select option", default="0")
         if choice == "1":
-            download_profile_all(loader)
+            download_profile_all(loader, config)
+            pause()
         elif choice == "2":
-            download_profile_videos(loader)
+            download_profile_videos(loader, config)
+            pause()
         elif choice == "3":
             download_profile_stories(loader)
+            pause()
         elif choice == "4":
             download_profile_highlights(loader)
+            pause()
         elif choice == "5":
-            download_hashtag(loader)
+            download_hashtag(loader, config)
+            pause()
         elif choice == "6":
             download_shortcode(loader)
+            pause()
         elif choice == "7":
             loader, active_user = settings_menu(
                 loader, config, base_dir, session_root, active_user
