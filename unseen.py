@@ -180,6 +180,39 @@ def login_and_save_session(
         return None
 
 
+def reload_session(
+    loader: instaloader.Instaloader, session_root: str, username: Optional[str]
+) -> Optional[str]:
+    if not username:
+        return None
+    file_path = session_file_for(session_root, username)
+    if not os.path.isfile(file_path):
+        return None
+    try:
+        loader.load_session_from_file(username, filename=file_path)
+        return username
+    except Exception:
+        print("Saved session could not be loaded.")
+        return None
+
+
+def logout_session(session_root: str, username: Optional[str]) -> None:
+    removed = False
+    if username:
+        file_path = session_file_for(session_root, username)
+        if os.path.isfile(file_path):
+            os.remove(file_path)
+            removed = True
+    last_user = last_user_path(session_root)
+    if os.path.isfile(last_user):
+        os.remove(last_user)
+        removed = True
+    if removed:
+        print("Saved session removed.")
+    else:
+        print("No saved session found.")
+
+
 def get_profile(loader: instaloader.Instaloader, username: str) -> Optional[instaloader.Profile]:
     try:
         return instaloader.Profile.from_username(loader.context, username)
@@ -308,6 +341,39 @@ def toggle_setting(config: Dict[str, Any]) -> None:
             print("Only boolean settings can be toggled here.")
 
 
+def settings_menu(
+    loader: instaloader.Instaloader,
+    config: Dict[str, Any],
+    base_dir: str,
+    session_root: str,
+    active_user: Optional[str],
+) -> tuple[instaloader.Instaloader, Optional[str]]:
+    while True:
+        print(
+            "\nSettings\n"
+            "  1. Toggle download options\n"
+            "  2. Log out (delete saved session)\n"
+            "  3. Log in / switch account\n"
+            "  0. Back"
+        )
+        choice = prompt("Select option", default="0")
+        if choice == "1":
+            toggle_setting(config)
+            loader = build_loader(base_dir, config)
+            active_user = reload_session(loader, session_root, active_user)
+        elif choice == "2":
+            logout_session(session_root, active_user)
+            active_user = None
+            loader = build_loader(base_dir, config)
+        elif choice == "3":
+            loader = build_loader(base_dir, config)
+            active_user = login_and_save_session(loader, session_root)
+        elif choice == "0":
+            return loader, active_user
+        else:
+            print("Invalid choice.")
+
+
 def main() -> None:
     print_banner()
     base_dir = ensure_dir(prompt("Download directory", default="downloads"))
@@ -329,12 +395,12 @@ def main() -> None:
         print(
             "Main Menu\n"
             "  1. Download profile (all posts, reels, videos)\n"
-            "  2. Download profile videos (includes reels)\n"
+            "  2. Download reels (video posts)\n"
             "  3. Download profile stories\n"
             "  4. Download profile highlights\n"
             "  5. Download hashtag\n"
             "  6. Download post by shortcode\n"
-            "  7. Settings\n"
+            "  7. Settings & account\n"
             "  0. Exit"
         )
         choice = prompt("Select option", default="0")
@@ -351,15 +417,9 @@ def main() -> None:
         elif choice == "6":
             download_shortcode(loader)
         elif choice == "7":
-            toggle_setting(config)
-            loader = build_loader(base_dir, config)
-            if active_user:
-                file_path = session_file_for(session_root, active_user)
-                if os.path.isfile(file_path):
-                    try:
-                        loader.load_session_from_file(active_user, filename=file_path)
-                    except Exception:
-                        print("Saved session could not be loaded after settings change.")
+            loader, active_user = settings_menu(
+                loader, config, base_dir, session_root, active_user
+            )
         elif choice == "0":
             print("Goodbye.")
             return
