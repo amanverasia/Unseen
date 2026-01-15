@@ -29,6 +29,8 @@ You can log in from the menu to access private content you follow, stories, and 
 - Some actions require login (stories, highlights, private profiles).
 - Use responsibly and follow Instagram's terms and Instaloader documentation.
 
-## Documentation
+## Disclaimer
 
-- Instaloader: https://instaloader.github.io/
+This project is provided as-is. You are responsible for how you use it and for complying with all applicable laws,
+platform policies, and terms of service. The authors are not liable for any account restrictions, flags, or bans that
+may result from use of this tool. Use it ethically, respect privacy, and avoid excessive or abusive downloading.
