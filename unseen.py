@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Interactive Instaloader helper for downloading profiles, posts, videos, and stories.
+Unseen: interactive Instaloader helper for downloading profiles, posts, videos, and stories.
 Docs: https://instaloader.github.io/
 """
 
@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 import sys
 from getpass import getpass
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 try:
@@ -38,6 +39,7 @@ BANNER = r"""
 
 ACCENT = "\033[96m"
 RESET = "\033[0m"
+INVALID_PATH_CHARS = '<>:"/\\|?*'
 
 
 def prompt(text: str, default: Optional[str] = None) -> str:
@@ -49,6 +51,16 @@ def prompt(text: str, default: Optional[str] = None) -> str:
 def ensure_dir(path: str) -> str:
     os.makedirs(path, exist_ok=True)
     return path
+
+
+def safe_dir_name(value: str, fallback: str = "untitled") -> str:
+    cleaned = value.strip()
+    for char in INVALID_PATH_CHARS:
+        cleaned = cleaned.replace(char, "_")
+    cleaned = cleaned.strip()
+    if cleaned.startswith("."):
+        cleaned = cleaned.lstrip(".")
+    return cleaned or fallback
 
 
 def build_loader(base_dir: str, config: Dict[str, Any]) -> instaloader.Instaloader:
@@ -74,21 +86,7 @@ def clear_screen() -> None:
 def print_banner() -> None:
     clear_screen()
     print(f"{ACCENT}{BANNER}{RESET}")
-    print("Instaloader Menu\n")
-
-
-class TemporaryDirnamePattern:
-    def __init__(self, loader: instaloader.Instaloader, pattern: str) -> None:
-        self.loader = loader
-        self.pattern = pattern
-        self.original = loader.dirname_pattern
-
-    def __enter__(self) -> None:
-        self.original = self.loader.dirname_pattern
-        self.loader.dirname_pattern = self.pattern
-
-    def __exit__(self, exc_type, exc, tb) -> None:
-        self.loader.dirname_pattern = self.original
+    print("UNSEEN\n")
 
 
 def repo_root() -> str:
@@ -198,7 +196,7 @@ def download_profile_all(loader: instaloader.Instaloader) -> None:
     profile = get_profile(loader, username)
     if not profile:
         return
-    target = os.path.join(profile.username, "posts")
+    target = Path(profile.username) / "posts"
     downloaded = 0
     for post in profile.get_posts():
         loader.download_post(post, target=target)
@@ -212,7 +210,7 @@ def download_profile_videos(loader: instaloader.Instaloader) -> None:
     if not profile:
         return
     downloaded = 0
-    target = os.path.join(profile.username, "videos")
+    target = Path(profile.username) / "videos"
     for post in profile.get_posts():
         if getattr(post, "is_video", False):
             loader.download_post(post, target=target)
@@ -220,7 +218,7 @@ def download_profile_videos(loader: instaloader.Instaloader) -> None:
     print(f"Done. Downloaded {downloaded} video posts.")
 
 
-def download_profile_stories(loader: instaloader.Instaloader, base_dir: str) -> None:
+def download_profile_stories(loader: instaloader.Instaloader) -> None:
     if not loader.context.is_logged_in:
         print("Stories require login.")
         return
@@ -228,13 +226,12 @@ def download_profile_stories(loader: instaloader.Instaloader, base_dir: str) -> 
     profile = get_profile(loader, username)
     if not profile:
         return
-    pattern = os.path.join(base_dir, "{target}", "stories")
-    with TemporaryDirnamePattern(loader, pattern):
-        loader.download_stories(userids=[profile.userid])
+    target = Path(profile.username) / "stories"
+    loader.download_stories(userids=[profile.userid], filename_target=target)
     print("Done.")
 
 
-def download_profile_highlights(loader: instaloader.Instaloader, base_dir: str) -> None:
+def download_profile_highlights(loader: instaloader.Instaloader) -> None:
     if not loader.context.is_logged_in:
         print("Highlights require login.")
         return
@@ -242,9 +239,23 @@ def download_profile_highlights(loader: instaloader.Instaloader, base_dir: str) 
     profile = get_profile(loader, username)
     if not profile:
         return
-    pattern = os.path.join(base_dir, "{target}", "highlights")
-    with TemporaryDirnamePattern(loader, pattern):
-        loader.download_highlights(profile)
+    target_base = Path(profile.username) / "highlights"
+    for user_highlight in loader.get_highlights(profile):
+        highlight_name = safe_dir_name(user_highlight.title, fallback="highlight")
+        highlight_target = target_base / highlight_name
+        loader.context.log(
+            f'Retrieving highlights "{user_highlight.title}" from profile {user_highlight.owner_username}'
+        )
+        loader.download_highlight_cover(user_highlight, highlight_target)
+        totalcount = user_highlight.itemcount
+        count = 1
+        for item in user_highlight.get_items():
+            loader.context.log(f"[{count:3d}/{totalcount:3d}] ", end="", flush=True)
+            count += 1
+            with loader.context.error_catcher(
+                f'Download highlights "{user_highlight.title}" from user {user_highlight.owner_username}'
+            ):
+                loader.download_storyitem(item, highlight_target)
     print("Done.")
 
 
@@ -255,7 +266,7 @@ def download_hashtag(loader: instaloader.Instaloader) -> None:
     except instaloader.exceptions.QueryReturnedNotFoundException:
         print(f"Hashtag not found: {tag}")
         return
-    target = os.path.join("hashtags", tag)
+    target = Path("hashtags") / safe_dir_name(tag, fallback="tag")
     for post in hashtag.get_posts():
         loader.download_post(post, target=target)
     print("Done.")
@@ -268,7 +279,7 @@ def download_shortcode(loader: instaloader.Instaloader) -> None:
     except instaloader.exceptions.QueryReturnedNotFoundException:
         print(f"Post not found: {shortcode}")
         return
-    target = os.path.join("shortcodes", shortcode)
+    target = Path("shortcodes") / safe_dir_name(shortcode, fallback="shortcode")
     loader.download_post(post, target=target)
     print("Done.")
 
@@ -332,9 +343,9 @@ def main() -> None:
         elif choice == "2":
             download_profile_videos(loader)
         elif choice == "3":
-            download_profile_stories(loader, base_dir)
+            download_profile_stories(loader)
         elif choice == "4":
-            download_profile_highlights(loader, base_dir)
+            download_profile_highlights(loader)
         elif choice == "5":
             download_hashtag(loader)
         elif choice == "6":
