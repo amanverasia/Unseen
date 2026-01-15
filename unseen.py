@@ -431,6 +431,33 @@ def download_shortcode(loader: instaloader.Instaloader) -> None:
     print("Done.")
 
 
+def download_saved_posts(
+    loader: instaloader.Instaloader,
+    config: Dict[str, Any],
+    target_username: Optional[str],
+    base_dir: str,
+) -> None:
+    if not loader.context.is_logged_in:
+        print("Saved posts require login.")
+        return
+    if not target_username or target_username != loader.context.username:
+        print(
+            "Saved posts only work for your own account. "
+            "Set target to your logged-in username to continue."
+        )
+        return
+    max_posts = max_posts_limit(config)
+    max_count = max_posts if max_posts > 0 else None
+    fast_update = bool(config.get("fast_update", False))
+    original_pattern = loader.dirname_pattern
+    loader.dirname_pattern = os.path.join(base_dir, target_username, "saved")
+    try:
+        loader.download_saved_posts(max_count=max_count, fast_update=fast_update)
+    finally:
+        loader.dirname_pattern = original_pattern
+    print("Done.")
+
+
 def download_followers_list(
     loader: instaloader.Instaloader, base_dir: str, profile: instaloader.Profile
 ) -> None:
@@ -599,10 +626,11 @@ def main() -> None:
             "  4. Download profile highlights\n"
             "  5. Download hashtag\n"
             "  6. Download post by shortcode\n"
-            "  7. Download followers list\n"
-            "  8. Download following list\n"
-            "  9. Change target profile\n"
-            "  10. Settings & account\n"
+            "  7. Download saved posts (your account)\n"
+            "  8. Download followers list\n"
+            "  9. Download following list\n"
+            "  10. Change target profile\n"
+            "  11. Settings & account\n"
             "  0. Exit"
         )
         choice = prompt("Select option", default="0")
@@ -657,6 +685,13 @@ def main() -> None:
             )
             pause()
         elif choice == "7":
+            run_action(
+                "Download saved posts",
+                lambda: download_saved_posts(loader, config, target_username, base_dir),
+                log_path=error_log,
+            )
+            pause()
+        elif choice == "8":
             profile = get_target_profile(loader, target_username)
             if profile:
                 run_action(
@@ -665,7 +700,7 @@ def main() -> None:
                     log_path=error_log,
                 )
             pause()
-        elif choice == "8":
+        elif choice == "9":
             profile = get_target_profile(loader, target_username)
             if profile:
                 run_action(
@@ -674,9 +709,9 @@ def main() -> None:
                     log_path=error_log,
                 )
             pause()
-        elif choice == "9":
-            target_username = prompt_target_username(target_username)
         elif choice == "10":
+            target_username = prompt_target_username(target_username)
+        elif choice == "11":
             loader, active_user = settings_menu(
                 loader, config, base_dir, session_root, active_user
             )
