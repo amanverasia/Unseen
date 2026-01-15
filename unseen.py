@@ -249,15 +249,29 @@ def login_and_save_session(
         write_last_user(session_root, username)
         return username
     except instaloader.TwoFactorAuthRequiredException:
-        code = prompt("Two-factor code")
-        loader.two_factor_login(code)
-        print("Login successful (2FA).")
-        file_path = session_file_for(session_root, username)
-        loader.save_session_to_file(filename=file_path)
-        write_last_user(session_root, username)
-        return username
+        max_attempts = 3
+        for attempt in range(1, max_attempts + 1):
+            code = prompt("Two-factor code (leave blank to cancel)")
+            if not code:
+                print("2FA canceled.")
+                return None
+            try:
+                loader.two_factor_login(code)
+                print("Login successful (2FA).")
+                file_path = session_file_for(session_root, username)
+                loader.save_session_to_file(filename=file_path)
+                write_last_user(session_root, username)
+                return username
+            except instaloader.exceptions.InstaloaderException as exc:
+                if attempt >= max_attempts:
+                    print(f"2FA login failed: {exc}")
+                    return None
+                print(f"2FA login failed: {exc}. Try again.")
     except instaloader.exceptions.BadCredentialsException:
         print("Login failed: bad credentials.")
+        return None
+    except instaloader.exceptions.InstaloaderException as exc:
+        print(f"Login failed: {exc}")
         return None
 
 
@@ -366,6 +380,13 @@ def download_profile_stories(
         return
     target = Path(profile.username) / "stories"
     loader.download_stories(userids=[profile.userid], filename_target=target)
+    print("Done.")
+
+
+def download_profile_picture(
+    loader: instaloader.Instaloader, profile: instaloader.Profile
+) -> None:
+    loader.download_profilepic(profile)
     print("Done.")
 
 
@@ -621,16 +642,17 @@ def main() -> None:
         print_screen("Main Menu", status_lines=status)
         print(
             "  1. Download profile (all posts, reels, videos)\n"
-            "  2. Download reels (video posts)\n"
-            "  3. Download profile stories\n"
-            "  4. Download profile highlights\n"
-            "  5. Download hashtag\n"
-            "  6. Download post by shortcode\n"
-            "  7. Download saved posts (your account)\n"
-            "  8. Download followers list\n"
-            "  9. Download following list\n"
-            "  10. Change target profile\n"
-            "  11. Settings & account\n"
+            "  2. Download profile picture\n"
+            "  3. Download reels (video posts)\n"
+            "  4. Download profile stories\n"
+            "  5. Download profile highlights\n"
+            "  6. Download hashtag\n"
+            "  7. Download post by shortcode\n"
+            "  8. Download saved posts (your account)\n"
+            "  9. Download followers list\n"
+            "  10. Download following list\n"
+            "  11. Change target profile\n"
+            "  12. Settings & account\n"
             "  0. Exit"
         )
         choice = prompt("Select option", default="0")
@@ -647,12 +669,21 @@ def main() -> None:
             profile = get_target_profile(loader, target_username)
             if profile:
                 run_action(
+                    "Download profile picture",
+                    lambda: download_profile_picture(loader, profile),
+                    log_path=error_log,
+                )
+            pause()
+        elif choice == "3":
+            profile = get_target_profile(loader, target_username)
+            if profile:
+                run_action(
                     "Download reels",
                     lambda: download_profile_videos(loader, config, profile),
                     log_path=error_log,
                 )
             pause()
-        elif choice == "3":
+        elif choice == "4":
             profile = get_target_profile(loader, target_username)
             if profile:
                 run_action(
@@ -661,7 +692,7 @@ def main() -> None:
                     log_path=error_log,
                 )
             pause()
-        elif choice == "4":
+        elif choice == "5":
             profile = get_target_profile(loader, target_username)
             if profile:
                 run_action(
@@ -670,28 +701,28 @@ def main() -> None:
                     log_path=error_log,
                 )
             pause()
-        elif choice == "5":
+        elif choice == "6":
             run_action(
                 "Download hashtag",
                 lambda: download_hashtag(loader, config),
                 log_path=error_log,
             )
             pause()
-        elif choice == "6":
+        elif choice == "7":
             run_action(
                 "Download post by shortcode",
                 lambda: download_shortcode(loader),
                 log_path=error_log,
             )
             pause()
-        elif choice == "7":
+        elif choice == "8":
             run_action(
                 "Download saved posts",
                 lambda: download_saved_posts(loader, config, target_username, base_dir),
                 log_path=error_log,
             )
             pause()
-        elif choice == "8":
+        elif choice == "9":
             profile = get_target_profile(loader, target_username)
             if profile:
                 run_action(
@@ -700,7 +731,7 @@ def main() -> None:
                     log_path=error_log,
                 )
             pause()
-        elif choice == "9":
+        elif choice == "10":
             profile = get_target_profile(loader, target_username)
             if profile:
                 run_action(
@@ -709,9 +740,9 @@ def main() -> None:
                     log_path=error_log,
                 )
             pause()
-        elif choice == "10":
-            target_username = prompt_target_username(target_username)
         elif choice == "11":
+            target_username = prompt_target_username(target_username)
+        elif choice == "12":
             loader, active_user = settings_menu(
                 loader, config, base_dir, session_root, active_user
             )
