@@ -2,3 +2,7 @@ session.json
 __pycache__
 Untitled-1.ipynb
 CLAUDE.md
+.venv/
+downloads/
+.instaloader_session/
+*.session
