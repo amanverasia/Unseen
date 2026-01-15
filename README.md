@@ -34,3 +34,24 @@ You can log in from the menu to access private content you follow, stories, and 
 This project is provided as-is. You are responsible for how you use it and for complying with all applicable laws,
 platform policies, and terms of service. The authors are not liable for any account restrictions, flags, or bans that
 may result from use of this tool. Use it ethically, respect privacy, and avoid excessive or abusive downloading.
+
+## Future Work
+
+### Must haves
+
+- Robust error classification with user-friendly guidance (rate limits, login required, private account).
+- Retry/backoff and pause controls for rate limits and temporary failures.
+- Saved configuration profile (persist settings between runs).
+
+### Nice to haves
+
+- Optional limits per download type (posts vs. reels vs. stories).
+- Export followers/following with extra fields (full name, user id) and CSV support.
+- Progress summary per action (downloaded/skipped/failed counts).
+- Session selection when multiple accounts exist.
+
+### Completely optional changes, but boy would it be awesome to have them
+
+- Rich TUI (panels, tables, live progress) with `rich`.
+- Scheduling mode (run nightly/weekly tasks).
+- Plug-in system for custom download targets or pipelines.
