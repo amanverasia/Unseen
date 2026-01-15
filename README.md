@@ -1,4 +1,4 @@
-# Instaloader Menu
+# Unseen
 
 Interactive CLI for downloading Instagram content with Instaloader.
 
@@ -18,7 +18,7 @@ pip install -r requirements.txt
 ## Usage
 
 ```bash
-python instaloader_menu.py
+python unseen.py
 ```
 
 You can log in from the menu to access private content you follow, stories, and highlights.
