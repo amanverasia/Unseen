@@ -8,9 +8,11 @@ from __future__ import annotations
 
 import os
 import sys
+import traceback
+from datetime import datetime
 from getpass import getpass
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 try:
     import instaloader
@@ -51,6 +53,24 @@ def prompt(text: str, default: Optional[str] = None) -> str:
     suffix = f" [{default}]" if default else ""
     value = input(f"{text}{suffix}: ").strip()
     return value or (default or "")
+
+
+def prompt_target_username(current: Optional[str] = None) -> str:
+    value = prompt("Target profile username (leave blank to skip)", default=current or "")
+    return value
+
+
+def prompt_count(label: str, default: int) -> int:
+    while True:
+        value = prompt(label, default=str(default))
+        try:
+            count = int(value)
+            if count < 0:
+                raise ValueError
+        except ValueError:
+            print("Please enter a non-negative integer.")
+            continue
+        return count
 
 
 def ensure_dir(path: str) -> str:
@@ -117,6 +137,35 @@ def pause(message: str = "Press Enter to continue") -> None:
         input(message)
 
 
+def log_error(path: str, label: str, exc: Exception) -> None:
+    ensure_dir(os.path.dirname(path))
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with open(path, "a", encoding="utf-8") as handle:
+        handle.write(f"[{timestamp}] {label}: {exc.__class__.__name__}: {exc}\n")
+        handle.write(traceback.format_exc())
+        handle.write("\n")
+
+
+def run_action(label: str, action: Callable[[], None], log_path: Optional[str] = None) -> None:
+    try:
+        action()
+    except instaloader.exceptions.InstaloaderException as exc:
+        if log_path:
+            log_error(log_path, label, exc)
+        print(f"{label} failed: {exc}")
+        print("Tip: try updating Instaloader or logging in again.")
+    except KeyError as exc:
+        if log_path:
+            log_error(log_path, label, exc)
+        print(f"{label} failed due to an unexpected response from Instagram.")
+        print(f"Missing key: {exc}")
+        print("Tip: try updating Instaloader or logging in again.")
+    except Exception as exc:
+        if log_path:
+            log_error(log_path, label, exc)
+        print(f"{label} failed: {exc.__class__.__name__}: {exc}")
+
+
 def repo_root() -> str:
     return os.path.dirname(os.path.abspath(__file__))
 
@@ -131,6 +180,10 @@ def session_file_for(session_root: str, username: str) -> str:
 
 def last_user_path(session_root: str) -> str:
     return os.path.join(session_root, "last_user.txt")
+
+
+def error_log_path(session_root: str) -> str:
+    return os.path.join(session_root, "errors.log")
 
 
 def read_last_user(session_root: str) -> Optional[str]:
@@ -252,11 +305,21 @@ def get_profile(loader: instaloader.Instaloader, username: str) -> Optional[inst
         return None
 
 
-def download_profile_all(loader: instaloader.Instaloader, config: Dict[str, Any]) -> None:
-    username = prompt("Target profile username")
-    profile = get_profile(loader, username)
+def get_target_profile(
+    loader: instaloader.Instaloader, target_username: Optional[str]
+) -> Optional[instaloader.Profile]:
+    if not target_username:
+        print("Target not set. Use 'Change target profile' to set one.")
+        return None
+    profile = get_profile(loader, target_username)
     if not profile:
-        return
+        print("Use 'Change target profile' to set a valid target.")
+    return profile
+
+
+def download_profile_all(
+    loader: instaloader.Instaloader, config: Dict[str, Any], profile: instaloader.Profile
+) -> None:
     target = Path(profile.username) / "posts"
     processed = 0
     downloaded = 0
@@ -274,11 +337,9 @@ def download_profile_all(loader: instaloader.Instaloader, config: Dict[str, Any]
     print(f"Done. Downloaded {downloaded} posts.")
 
 
-def download_profile_videos(loader: instaloader.Instaloader, config: Dict[str, Any]) -> None:
-    username = prompt("Target profile username")
-    profile = get_profile(loader, username)
-    if not profile:
-        return
+def download_profile_videos(
+    loader: instaloader.Instaloader, config: Dict[str, Any], profile: instaloader.Profile
+) -> None:
     processed = 0
     downloaded = 0
     target = Path(profile.username) / "videos"
@@ -297,26 +358,22 @@ def download_profile_videos(loader: instaloader.Instaloader, config: Dict[str, A
     print(f"Done. Downloaded {downloaded} video posts.")
 
 
-def download_profile_stories(loader: instaloader.Instaloader) -> None:
+def download_profile_stories(
+    loader: instaloader.Instaloader, profile: instaloader.Profile
+) -> None:
     if not loader.context.is_logged_in:
         print("Stories require login.")
         return
-    username = prompt("Target profile username")
-    profile = get_profile(loader, username)
-    if not profile:
-        return
     target = Path(profile.username) / "stories"
     loader.download_stories(userids=[profile.userid], filename_target=target)
-    print(f"Done. Downloaded {downloaded} hashtag posts.")
+    print("Done.")
 
 
-def download_profile_highlights(loader: instaloader.Instaloader) -> None:
+def download_profile_highlights(
+    loader: instaloader.Instaloader, profile: instaloader.Profile
+) -> None:
     if not loader.context.is_logged_in:
         print("Highlights require login.")
-        return
-    username = prompt("Target profile username")
-    profile = get_profile(loader, username)
-    if not profile:
         return
     target_base = Path(profile.username) / "highlights"
     for user_highlight in loader.get_highlights(profile):
@@ -348,7 +405,7 @@ def download_hashtag(loader: instaloader.Instaloader, config: Dict[str, Any]) ->
     target = Path("hashtags") / safe_dir_name(tag, fallback="tag")
     processed = 0
     downloaded = 0
-    max_posts = max_posts_limit(config)
+    max_posts = prompt_count("How many posts to download (0 = unlimited)", default=20)
     fast_update = bool(config.get("fast_update", False))
     for post in hashtag.get_posts():
         if max_posts and processed >= max_posts:
@@ -359,7 +416,7 @@ def download_hashtag(loader: instaloader.Instaloader, config: Dict[str, Any]) ->
             downloaded += 1
         if fast_update and not did_download:
             break
-    print("Done.")
+    print(f"Done. Downloaded {downloaded} hashtag posts.")
 
 
 def download_shortcode(loader: instaloader.Instaloader) -> None:
@@ -374,13 +431,11 @@ def download_shortcode(loader: instaloader.Instaloader) -> None:
     print("Done.")
 
 
-def download_followers_list(loader: instaloader.Instaloader, base_dir: str) -> None:
+def download_followers_list(
+    loader: instaloader.Instaloader, base_dir: str, profile: instaloader.Profile
+) -> None:
     if not loader.context.is_logged_in:
         print("Followers list requires login.")
-        return
-    username = prompt("Target profile username")
-    profile = get_profile(loader, username)
-    if not profile:
         return
     output_dir = Path(base_dir) / profile.username
     ensure_dir(str(output_dir))
@@ -393,13 +448,11 @@ def download_followers_list(loader: instaloader.Instaloader, base_dir: str) -> N
     print(f"Saved {count} followers to {output_path}")
 
 
-def download_following_list(loader: instaloader.Instaloader, base_dir: str) -> None:
+def download_following_list(
+    loader: instaloader.Instaloader, base_dir: str, profile: instaloader.Profile
+) -> None:
     if not loader.context.is_logged_in:
         print("Following list requires login.")
-        return
-    username = prompt("Target profile username")
-    profile = get_profile(loader, username)
-    if not profile:
         return
     output_dir = Path(base_dir) / profile.username
     ensure_dir(str(output_dir))
@@ -525,15 +578,18 @@ def main() -> None:
     config = dict(DEFAULT_CONFIG)
     loader = build_loader(base_dir, config)
     session_root = session_dir(repo_root())
+    error_log = error_log_path(session_root)
 
     active_user = load_session_if_available(loader, session_root)
     if not loader.context.is_logged_in:
         active_user = login_and_save_session(loader, session_root)
+    target_username = prompt_target_username()
 
     while True:
         status = [
             f"Download dir: {base_dir}",
             f"Account: {loader.context.username if loader.context.is_logged_in else 'Not logged in'}",
+            f"Target: {target_username or 'not set'}",
         ]
         print_screen("Main Menu", status_lines=status)
         print(
@@ -545,35 +601,82 @@ def main() -> None:
             "  6. Download post by shortcode\n"
             "  7. Download followers list\n"
             "  8. Download following list\n"
-            "  9. Settings & account\n"
+            "  9. Change target profile\n"
+            "  10. Settings & account\n"
             "  0. Exit"
         )
         choice = prompt("Select option", default="0")
         if choice == "1":
-            download_profile_all(loader, config)
+            profile = get_target_profile(loader, target_username)
+            if profile:
+                run_action(
+                    "Download profile posts",
+                    lambda: download_profile_all(loader, config, profile),
+                    log_path=error_log,
+                )
             pause()
         elif choice == "2":
-            download_profile_videos(loader, config)
+            profile = get_target_profile(loader, target_username)
+            if profile:
+                run_action(
+                    "Download reels",
+                    lambda: download_profile_videos(loader, config, profile),
+                    log_path=error_log,
+                )
             pause()
         elif choice == "3":
-            download_profile_stories(loader)
+            profile = get_target_profile(loader, target_username)
+            if profile:
+                run_action(
+                    "Download stories",
+                    lambda: download_profile_stories(loader, profile),
+                    log_path=error_log,
+                )
             pause()
         elif choice == "4":
-            download_profile_highlights(loader)
+            profile = get_target_profile(loader, target_username)
+            if profile:
+                run_action(
+                    "Download highlights",
+                    lambda: download_profile_highlights(loader, profile),
+                    log_path=error_log,
+                )
             pause()
         elif choice == "5":
-            download_hashtag(loader, config)
+            run_action(
+                "Download hashtag",
+                lambda: download_hashtag(loader, config),
+                log_path=error_log,
+            )
             pause()
         elif choice == "6":
-            download_shortcode(loader)
+            run_action(
+                "Download post by shortcode",
+                lambda: download_shortcode(loader),
+                log_path=error_log,
+            )
             pause()
         elif choice == "7":
-            download_followers_list(loader, base_dir)
+            profile = get_target_profile(loader, target_username)
+            if profile:
+                run_action(
+                    "Download followers list",
+                    lambda: download_followers_list(loader, base_dir, profile),
+                    log_path=error_log,
+                )
             pause()
         elif choice == "8":
-            download_following_list(loader, base_dir)
+            profile = get_target_profile(loader, target_username)
+            if profile:
+                run_action(
+                    "Download following list",
+                    lambda: download_following_list(loader, base_dir, profile),
+                    log_path=error_log,
+                )
             pause()
         elif choice == "9":
+            target_username = prompt_target_username(target_username)
+        elif choice == "10":
             loader, active_user = settings_menu(
                 loader, config, base_dir, session_root, active_user
             )
